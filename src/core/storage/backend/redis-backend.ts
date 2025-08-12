@@ -69,6 +69,7 @@ export class RedisBackend implements CacheBackend {
 			// Host and port configuration
 			...(this.config.host && { host: this.config.host }),
 			...(this.config.port && { port: this.config.port }),
+			...(this.config.username && { username: this.config.username }),
 			...(this.config.password && { password: this.config.password }),
 
 			// Database selection (default: 0)
@@ -95,6 +96,7 @@ export class RedisBackend implements CacheBackend {
 			...this.config.options,
 		});
 
+		// Explicitly connect since lazyConnect is enabled
 		let connectionError: Error | null = null;
 		this.redis.on('error', err => {
 			connectionError = err;
@@ -117,7 +119,8 @@ export class RedisBackend implements CacheBackend {
 			this.redis?.once('ready', onReady);
 			this.redis?.once('error', onError);
 
-			// Timeout after 1s
+			// Use configurable timeout or default to 10 seconds
+			const timeoutMs = this.config.connectionTimeoutMillis || 10000;
 			setTimeout(() => {
 				cleanup();
 				if (connectionError) {
@@ -125,7 +128,10 @@ export class RedisBackend implements CacheBackend {
 				} else {
 					reject(new Error('Redis connection failed: timeout'));
 				}
-			}, 1000);
+			}, timeoutMs);
+
+			// Start the connection - this is critical for lazyConnect: true
+			this.redis?.connect().catch(onError);
 		});
 	}
 

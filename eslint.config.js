@@ -43,10 +43,15 @@ export default [
 				AbortSignal: 'readonly',
 				structuredClone: 'readonly',
 				NodeJS: 'readonly',
+				Event: 'readonly',
+				EventListener: 'readonly',
 				CustomEvent: 'readonly',
 				localStorage: 'readonly',
 				FileReader: 'readonly',
 				WebSocket: 'readonly',
+				fetch: 'readonly',
+				RequestInit: 'readonly',
+				Response: 'readonly',
 				// Test globals
 				describe: 'readonly',
 				test: 'readonly',
@@ -71,6 +76,63 @@ export default [
 			'@typescript-eslint/no-explicit-any': 'off',
 			'@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
 			'no-dupe-class-members': 'off', // Allow TypeScript method overloading
+		},
+	},
+
+	// ES Module JavaScript specific config (for config files)
+	{
+		files: ['**/*.config.js', 'eslint.config.js'],
+		languageOptions: {
+			ecmaVersion: 2022,
+			sourceType: 'module',
+			globals: {
+				// Node.js globals
+				console: 'readonly',
+				process: 'readonly',
+				Buffer: 'readonly',
+				setTimeout: 'readonly',
+				clearTimeout: 'readonly',
+				setInterval: 'readonly',
+				clearInterval: 'readonly',
+				setImmediate: 'readonly',
+				clearImmediate: 'readonly',
+			},
+		},
+		rules: {
+			'no-console': 'off',
+			'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+		},
+	},
+
+	// Node.js JavaScript specific config (for CommonJS files)
+	{
+		files: ['**/*.js'],
+		ignores: ['**/*.config.js', 'eslint.config.js'],
+		languageOptions: {
+			ecmaVersion: 2022,
+			sourceType: 'commonjs',
+			globals: {
+				// Node.js globals
+				console: 'readonly',
+				process: 'readonly',
+				require: 'readonly',
+				module: 'readonly',
+				exports: 'readonly',
+				__dirname: 'readonly',
+				__filename: 'readonly',
+				global: 'readonly',
+				Buffer: 'readonly',
+				setTimeout: 'readonly',
+				clearTimeout: 'readonly',
+				setInterval: 'readonly',
+				clearInterval: 'readonly',
+				setImmediate: 'readonly',
+				clearImmediate: 'readonly',
+			},
+		},
+		rules: {
+			'no-console': 'off',
+			'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
 		},
 	},
 
@@ -112,6 +174,9 @@ export default [
 			'public/**',
 			'src/app/webui/.next/**',
 			'src/app/webui/out/**',
+			'src/app/ui/.next/**',
+			'src/app/ui/out/**',
+			'src/app/ui/.eslintrc.js',
 			'**/build/**',
 			'**/coverage/**',
 			'test-temp/**',

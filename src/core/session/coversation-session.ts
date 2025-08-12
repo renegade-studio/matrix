@@ -19,6 +19,10 @@ import { setImmediate } from 'timers';
 import { IConversationHistoryProvider } from '../brain/llm/messages/history/types.js';
 import type { SerializedSession } from './persistence-types.js';
 import { SESSION_PERSISTENCE_CONSTANTS, SessionPersistenceError } from './persistence-types.js';
+import { IMessageFormatter } from '../brain/llm/messages/formatters/types.js';
+import { OpenAIMessageFormatter } from '../brain/llm/messages/formatters/openai.js';
+import { AzureMessageFormatter } from '../brain/llm/messages/formatters/azure.js';
+import { AnthropicMessageFormatter } from '../brain/llm/messages/formatters/anthropic.js';
 
 // This function is currently unused but kept for potential future use
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -92,6 +96,7 @@ export class ConversationSession {
 			mcpManager: MCPManager;
 			unifiedToolManager: UnifiedToolManager;
 			embeddingManager?: any; // Optional embedding manager for status checking
+			eventManager?: any; // Add event manager to services
 		},
 		public readonly id: string,
 		options?: {
@@ -104,6 +109,7 @@ export class ConversationSession {
 			beforeMemoryExtraction?: (meta: Record<string, any>, context: Record<string, any>) => void;
 			historyEnabled?: boolean;
 			historyBackend?: 'database' | 'memory';
+			sharedStorageManager?: StorageManager; // Allow sharing storage manager
 		}
 	) {
 		if (options?.sessionMemoryMetadata) {
@@ -124,6 +130,10 @@ export class ConversationSession {
 		if (options?.historyBackend) {
 			this.historyBackend = options.historyBackend;
 		}
+		if (options?.sharedStorageManager) {
+			this._storageManager = options.sharedStorageManager;
+			this._storageInitialized = true;
+		}
 	}
 
 	/**
@@ -137,21 +147,70 @@ export class ConversationSession {
 	 * Initialize all services for the session, including history provider.
 	 */
 	public async init(): Promise<void> {
-		logger.debug(`Session ${this.id}: Starting initialization...`);
 		await this.initializeServices();
 		// Note: History restoration will happen lazily when history is first accessed
 		// This improves startup performance by not initializing storage until needed
-		logger.debug(`Session ${this.id}: Core initialization complete (lazy loading enabled)`);
 	}
 
 	/**
 	 * Initializes the services for the session, including the history provider.
 	 */
 	private async initializeServices(): Promise<void> {
-		this.contextManager = this.services.contextManager;
+		// Create a session-specific context manager instead of using the shared one
+		const llmConfig = this.services.stateManager.getLLMConfig(this.id);
+		const formatter = this.getFormatterForProvider(llmConfig.provider);
+		this.contextManager = new ContextManager(
+			formatter,
+			this.services.promptManager,
+			undefined, // historyProvider will be lazy-loaded
+			this.id // sessionId
+		);
+
+		// CRITICAL FIX: Initialize history provider early if shared storage manager is available
+		// This ensures conversation history is available immediately for new sessions
+		if (this._storageManager && this.historyEnabled) {
+			try {
+				this._historyProvider = createDatabaseHistoryProvider(this._storageManager);
+				logger.debug(
+					`Session ${this.id}: History provider initialized during service initialization.`
+				);
+
+				// Set the history provider in the context manager
+				(this.contextManager as any).historyProvider = this._historyProvider;
+			} catch (error) {
+				logger.warn(
+					`Session ${this.id}: Failed to initialize history provider during service initialization:`,
+					error
+				);
+			}
+		}
 
 		this._servicesInitialized = true;
-		logger.debug(`ChatSession ${this.id}: Core services initialized (lazy loading enabled)`);
+	}
+
+	/**
+	 * Get the appropriate formatter for the provider
+	 */
+	private getFormatterForProvider(provider: string): IMessageFormatter {
+		const normalizedProvider = provider.toLowerCase();
+		switch (normalizedProvider) {
+			case 'openai':
+			case 'openrouter':
+			case 'ollama':
+			case 'lmstudio':
+			case 'qwen':
+			case 'gemini':
+				return new OpenAIMessageFormatter();
+			case 'azure':
+				return new AzureMessageFormatter();
+			case 'anthropic':
+			case 'aws':
+				return new AnthropicMessageFormatter();
+			default:
+				throw new Error(
+					`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter, ollama, lmstudio, qwen, aws, azure, gemini`
+				);
+		}
 	}
 
 	/**
@@ -171,7 +230,8 @@ export class ConversationSession {
 					llmConfig,
 					this.services.mcpManager,
 					this.contextManager,
-					this.services.unifiedToolManager
+					this.services.unifiedToolManager,
+					this.services.eventManager
 				);
 				this._llmServiceInitialized = true;
 				logger.debug(`Session ${this.id}: LLM service lazy-initialized`);
@@ -219,59 +279,75 @@ export class ConversationSession {
 						);
 						logger.debug(`Session ${this.id}: Multi-backend history provider lazy-initialized.`);
 					} else if (this.historyBackend === 'database') {
-						// Use the same storage configuration as the session manager
-						// This ensures both session data and conversation history use the same backend
-						const postgresUrl = process.env.CIPHER_PG_URL;
-						const postgresHost = process.env.STORAGE_DATABASE_HOST;
-						const postgresDatabase = process.env.STORAGE_DATABASE_NAME;
+						// CRITICAL FIX: Add a small delay to prevent storage manager conflicts
+						// This prevents race conditions when multiple sessions are initializing storage
+						if (!this._storageManager) {
+							await new Promise(resolve => setTimeout(resolve, 25));
+						}
 
-						let storageConfig: any;
+						// Use shared storage manager if available, otherwise create new one
+						if (!this._storageManager) {
+							// Use the same storage configuration as the session manager
+							// This ensures both session data and conversation history use the same backend
+							const postgresUrl = process.env.CIPHER_PG_URL;
+							const postgresHost = process.env.STORAGE_DATABASE_HOST;
+							const postgresDatabase = process.env.STORAGE_DATABASE_NAME;
 
-						if (postgresUrl || (postgresHost && postgresDatabase)) {
-							// Use PostgreSQL if configured
-							if (postgresUrl) {
-								storageConfig = {
-									database: { type: 'postgres' as const, url: postgresUrl },
-									cache: { type: 'in-memory' as const },
-								};
+							let storageConfig: any;
+
+							if (postgresUrl || (postgresHost && postgresDatabase)) {
+								// Use PostgreSQL if configured
+								if (postgresUrl) {
+									storageConfig = {
+										database: { type: 'postgres' as const, url: postgresUrl },
+										cache: { type: 'in-memory' as const },
+									};
+								} else {
+									storageConfig = {
+										database: {
+											type: 'postgres' as const,
+											host: postgresHost,
+											database: postgresDatabase,
+											port: process.env.STORAGE_DATABASE_PORT
+												? parseInt(process.env.STORAGE_DATABASE_PORT, 10)
+												: 5432,
+											user: process.env.STORAGE_DATABASE_USER,
+											password: process.env.STORAGE_DATABASE_PASSWORD,
+											ssl: process.env.STORAGE_DATABASE_SSL === 'true',
+										},
+										cache: { type: 'in-memory' as const },
+									};
+								}
+								logger.debug(
+									`Session ${this.id}: Using PostgreSQL for history provider (lazy-loaded)`
+								);
 							} else {
+								// Fallback to SQLite
 								storageConfig = {
 									database: {
-										type: 'postgres' as const,
-										host: postgresHost,
-										database: postgresDatabase,
-										port: process.env.STORAGE_DATABASE_PORT
-											? parseInt(process.env.STORAGE_DATABASE_PORT, 10)
-											: 5432,
-										user: process.env.STORAGE_DATABASE_USER,
-										password: process.env.STORAGE_DATABASE_PASSWORD,
-										ssl: process.env.STORAGE_DATABASE_SSL === 'true',
+										type: 'sqlite' as const,
+										path: env.STORAGE_DATABASE_PATH || './data',
+										database: env.STORAGE_DATABASE_NAME || 'cipher-sessions.db',
 									},
 									cache: { type: 'in-memory' as const },
 								};
+								logger.debug(`Session ${this.id}: Using SQLite for history provider (lazy-loaded)`);
 							}
+
+							this._storageManager = new StorageManager(storageConfig);
+							await this._storageManager.connect();
 							logger.debug(
-								`Session ${this.id}: Using PostgreSQL for history provider (lazy-loaded)`
+								`Session ${this.id}: Database history provider lazy-initialized with ${storageConfig.database.type} backend.`
 							);
 						} else {
-							// Fallback to SQLite
-							storageConfig = {
-								database: {
-									type: 'sqlite' as const,
-									path: env.STORAGE_DATABASE_PATH || './data',
-									database: env.STORAGE_DATABASE_NAME || 'cipher-sessions.db',
-								},
-								cache: { type: 'in-memory' as const },
-							};
-							logger.debug(`Session ${this.id}: Using SQLite for history provider (lazy-loaded)`);
+							logger.debug(
+								`Session ${this.id}: Using shared storage manager for history provider.`
+							);
 						}
 
-						this._storageManager = new StorageManager(storageConfig);
-						await this._storageManager.connect();
+						// CRITICAL FIX: Always create the history provider, whether using shared or new storage manager
 						this._historyProvider = createDatabaseHistoryProvider(this._storageManager);
-						logger.debug(
-							`Session ${this.id}: Database history provider lazy-initialized with ${storageConfig.database.type} backend.`
-						);
+						logger.debug(`Session ${this.id}: History provider created with storage manager.`);
 					} else {
 						// TODO: Implement or import an in-memory provider if needed
 						logger.debug(`Session ${this.id}: In-memory history provider selected (lazy-loaded).`);
@@ -279,8 +355,8 @@ export class ConversationSession {
 				}
 				this._storageInitialized = true;
 			} catch (error) {
-				logger.warn(`Session ${this.id}: Failed to lazy-initialize storage manager`, { error });
-				this._storageInitialized = true; // Mark as initialized to prevent retry
+				logger.warn(`Session ${this.id}: Failed to initialize storage manager:`, error);
+				// Continue without storage manager
 			}
 		}
 		return this._storageManager;
@@ -293,6 +369,21 @@ export class ConversationSession {
 		if (!this._storageInitialized) {
 			await this.getStorageManagerLazy();
 		}
+
+		// CRITICAL FIX: If history provider is still not available after storage initialization,
+		// try to create it again
+		if (!this._historyProvider && this.historyEnabled && this._storageManager) {
+			try {
+				this._historyProvider = createDatabaseHistoryProvider(this._storageManager);
+				logger.debug(`Session ${this.id}: History provider created in lazy initialization.`);
+			} catch (error) {
+				logger.warn(
+					`Session ${this.id}: Failed to create history provider in lazy initialization:`,
+					error
+				);
+			}
+		}
+
 		return this._historyProvider;
 	}
 
@@ -430,6 +521,23 @@ export class ConversationSession {
 
 		// Lazy initialize LLM service when first needed
 		const llmService = await this.getLLMServiceLazy();
+
+		// Emit thinking event before starting generation
+		if (this.services.eventManager) {
+			try {
+				const sessionBus = this.services.eventManager.getSessionEventBus(this.id);
+				sessionBus.emit('llm:thinking', {
+					sessionId: this.id,
+					timestamp: Date.now(),
+				});
+				logger.debug('Emitted llm:thinking event', { sessionId: this.id });
+			} catch (error) {
+				logger.warn('Failed to emit thinking event', {
+					sessionId: this.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
 
 		// Generate response
 		const response = await llmService.generate(input, imageDataInput, stream);
@@ -572,20 +680,29 @@ export class ConversationSession {
 				return;
 			}
 
-			// Load all tools once to avoid redundant loading
-			const allTools = await this.services.unifiedToolManager.getAllTools();
+			// Check if workspace memory is enabled
+			const workspaceMemoryEnabled = env.USE_WORKSPACE_MEMORY;
+			const shouldDisableDefaultMemory = workspaceMemoryEnabled && env.DISABLE_DEFAULT_MEMORY;
 
-			// Check if the memory extraction tool is available
-			const memoryToolAvailable = allTools['cipher_extract_and_operate_memory'];
+			// Determine which memory tools to run based on configuration
+			const shouldRunWorkspace = workspaceMemoryEnabled;
+			const shouldRunDefault = !shouldDisableDefaultMemory;
 
-			if (embeddingsDisabled || !memoryToolAvailable) {
-				logger.debug('ConversationSession: Memory extraction skipped', {
+			if (embeddingsDisabled) {
+				logger.debug('ConversationSession: Memory extraction skipped - embeddings disabled', {
 					embeddingsDisabled,
-					memoryToolAvailable: !!memoryToolAvailable,
-					reason: embeddingsDisabled ? 'embeddings disabled' : 'memory tool unavailable',
+					workspaceMemoryEnabled,
+					shouldDisableDefaultMemory,
 				});
 				return;
 			}
+
+			logger.debug('ConversationSession: Memory tools to execute', {
+				workspaceMemoryEnabled,
+				shouldDisableDefaultMemory,
+				shouldRunWorkspace,
+				shouldRunDefault,
+			});
 
 			// Extract comprehensive interaction data including tool usage
 			const comprehensiveInteractionData = await this.extractComprehensiveInteractionData(
@@ -623,11 +740,39 @@ export class ConversationSession {
 				memoryMetadata = this.getSessionMetadata();
 			}
 
-			// Call the extract_and_operate_memory tool directly (with cipher_ prefix)
-			// Use executeToolWithoutLoading to avoid redundant tool loading
-			const memoryResult = await this.services.unifiedToolManager.executeToolWithoutLoading(
-				'cipher_extract_and_operate_memory',
-				{
+			// Execute memory tools based on configuration
+			const memoryResults: any[] = [];
+
+			// Execute workspace memory tool if enabled
+			if (shouldRunWorkspace) {
+				const workspaceArgs = {
+					interaction: comprehensiveInteractionData,
+					context: mergedContext,
+					options: {
+						similarityThreshold: 0.8,
+						confidenceThreshold: 0.6,
+						enableBatchProcessing: true,
+						autoExtractWorkspaceInfo: true,
+					},
+				};
+
+				try {
+					const workspaceResult = await this.services.unifiedToolManager.executeToolWithoutLoading(
+						'cipher_workspace_store',
+						workspaceArgs
+					);
+					memoryResults.push({ tool: 'cipher_workspace_store', result: workspaceResult });
+					logger.debug('ConversationSession: Workspace memory tool executed successfully');
+				} catch (error) {
+					logger.debug('ConversationSession: Workspace memory tool execution failed', {
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+
+			// Execute default memory tool if not disabled
+			if (shouldRunDefault) {
+				const defaultArgs = {
 					interaction: comprehensiveInteractionData,
 					context: mergedContext,
 					memoryMetadata,
@@ -639,26 +784,77 @@ export class ConversationSession {
 						enableDeleteOperations: true,
 						historyTracking: options?.historyTracking ?? true,
 					},
+				};
+
+				try {
+					const defaultResult = await this.services.unifiedToolManager.executeToolWithoutLoading(
+						'cipher_extract_and_operate_memory',
+						defaultArgs
+					);
+					memoryResults.push({ tool: 'cipher_extract_and_operate_memory', result: defaultResult });
+					logger.debug('ConversationSession: Default memory tool executed successfully');
+				} catch (error) {
+					logger.debug('ConversationSession: Default memory tool execution failed', {
+						error: error instanceof Error ? error.message : String(error),
+					});
 				}
-			);
+			}
+
+			// If no tools were executed successfully, return early
+			if (memoryResults.length === 0) {
+				logger.debug('ConversationSession: No memory tools executed successfully');
+				return;
+			}
+
+			// Aggregate results from all executed tools
+			let totalExtractedFacts = 0;
+			let totalMemoryActions = 0;
+			const toolSummary: any = {};
+			const combinedActions: any[] = [];
+
+			for (const { tool, result } of memoryResults) {
+				if (result.success) {
+					totalExtractedFacts += result.extraction?.extracted || 0;
+
+					// Get actions from the appropriate field based on tool type
+					const actions =
+						tool === 'cipher_workspace_store' ? result.workspace || [] : result.memory || [];
+
+					totalMemoryActions += actions.length;
+					combinedActions.push(...actions);
+
+					toolSummary[tool] = {
+						success: true,
+						extractedFacts: result.extraction?.extracted || 0,
+						memoryActions: actions.length,
+					};
+				} else {
+					toolSummary[tool] = { success: false };
+				}
+			}
 
 			logger.debug('ConversationSession: Memory extraction completed', {
-				success: memoryResult.success,
-				extractedFacts: memoryResult.extraction?.extracted || 0,
-				totalMemoryActions: memoryResult.memory?.length || 0,
-				actionBreakdown: memoryResult.memory
-					? {
-							ADD: memoryResult.memory.filter((a: any) => a.event === 'ADD').length,
-							UPDATE: memoryResult.memory.filter((a: any) => a.event === 'UPDATE').length,
-							DELETE: memoryResult.memory.filter((a: any) => a.event === 'DELETE').length,
-							NONE: memoryResult.memory.filter((a: any) => a.event === 'NONE').length,
-						}
-					: {},
+				toolsExecuted: memoryResults.map(r => r.tool),
+				shouldRunWorkspace,
+				shouldRunDefault,
+				totalExtractedFacts,
+				totalMemoryActions,
+				toolSummary,
+				actionBreakdown:
+					combinedActions.length > 0
+						? {
+								ADD: combinedActions.filter((a: any) => a.event === 'ADD').length,
+								UPDATE: combinedActions.filter((a: any) => a.event === 'UPDATE').length,
+								DELETE: combinedActions.filter((a: any) => a.event === 'DELETE').length,
+								NONE: combinedActions.filter((a: any) => a.event === 'NONE').length,
+							}
+						: {},
 			});
 
 			// **NEW: Automatic Reflection Memory Processing**
 			// Process reasoning traces in the background, similar to knowledge memory
-			// NOTE: Pass the already-loaded tools to avoid redundant loading
+			// Load tools for reflection processing (separate from background memory extraction)
+			const allTools = await this.services.unifiedToolManager.getAllTools();
 			await this.enforceReflectionMemoryProcessing(userInput, aiResponse, allTools);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
@@ -730,7 +926,6 @@ export class ConversationSession {
 			// Check if reflection memory tools are available (using pre-loaded tools)
 			const reflectionToolsAvailable =
 				allTools['cipher_extract_reasoning_steps'] && allTools['cipher_store_reasoning_memory'];
-
 			if (embeddingsDisabled || !reflectionToolsAvailable) {
 				logger.debug('ConversationSession: Reflection memory processing skipped', {
 					embeddingsDisabled,
@@ -796,7 +991,8 @@ export class ConversationSession {
 							extractImplicit: true,
 							includeMetadata: true,
 						},
-					}
+					},
+					this.id
 				);
 
 				logger.debug('ConversationSession: Reasoning extraction completed', {
@@ -813,9 +1009,6 @@ export class ConversationSession {
 
 			// Only proceed if we extracted reasoning steps
 			if (!extractionResult.success || !extractionResult.result?.trace?.steps?.length) {
-				logger.debug(
-					'ConversationSession: No reasoning steps extracted, skipping evaluation and storage'
-				);
 				return;
 			}
 
@@ -849,7 +1042,8 @@ export class ConversationSession {
 							generateSuggestions: true,
 						},
 						llmService: evalLLMService,
-					}
+					},
+					this.id
 				);
 
 				logger.debug('ConversationSession: Reasoning evaluation completed', {
@@ -866,7 +1060,7 @@ export class ConversationSession {
 			}
 
 			// Only proceed if evaluation was successful and indicates we should store
-			if (!evaluationResult.success || !evaluationResult.result?.evaluation?.shouldStore) {
+			if (!evaluationResult.result?.evaluation?.shouldStore) {
 				logger.debug(
 					'ConversationSession: Evaluation indicates should not store, skipping storage',
 					{
@@ -886,7 +1080,8 @@ export class ConversationSession {
 					{
 						trace: reasoningTrace,
 						evaluation: evaluation,
-					}
+					},
+					this.id
 				);
 
 				logger.debug('ConversationSession: Reflection memory storage completed', {
@@ -1175,12 +1370,106 @@ export class ConversationSession {
 	 * Force refresh conversation history from the database
 	 */
 	public async refreshConversationHistory(): Promise<void> {
-		if (this._historyProvider && this.historyEnabled && this.contextManager) {
+		if (this.historyEnabled && this.contextManager) {
 			try {
-				await this.contextManager.restoreHistory?.();
+				// CRITICAL FIX: Clear context manager first to prevent stale message conflicts
+				if (typeof (this.contextManager as any).clearMessages === 'function') {
+					(this.contextManager as any).clearMessages();
+					logger.debug(`Session ${this.id}: Cleared existing messages from context manager`);
+				}
+
+				// Ensure history provider is initialized
+				const historyProvider = await this.getHistoryProviderLazy();
+				if (historyProvider) {
+					// CRITICAL FIX: Always set history provider in context manager
+					(this.contextManager as any).historyProvider = historyProvider;
+					logger.debug(`Session ${this.id}: Set/updated history provider in context manager`);
+
+					// Get fresh history from provider
+					const history = await historyProvider.getHistory(this.id);
+					logger.debug(
+						`Session ${this.id}: Retrieved ${history.length} messages from history provider`
+					);
+
+					// CRITICAL FIX: Use multiple methods to restore history for maximum compatibility
+					let historyRestored = false;
+
+					// Method 1: Try context manager's restoreHistory if available
+					if (this.contextManager.restoreHistory && !historyRestored) {
+						try {
+							await this.contextManager.restoreHistory();
+							historyRestored = true;
+							logger.debug(
+								`Session ${this.id}: Successfully restored history via context manager restoreHistory`
+							);
+						} catch (restoreError) {
+							logger.debug(`Session ${this.id}: restoreHistory failed:`, restoreError);
+						}
+					}
+
+					// Method 2: Try setMessages if available
+					if (!historyRestored && typeof (this.contextManager as any).setMessages === 'function') {
+						try {
+							(this.contextManager as any).setMessages(history);
+							historyRestored = true;
+							logger.debug(
+								`Session ${this.id}: Successfully restored ${history.length} messages via setMessages`
+							);
+						} catch (setError) {
+							logger.debug(`Session ${this.id}: setMessages failed:`, setError);
+						}
+					}
+
+					// Method 3: Manual message addition as final fallback
+					if (!historyRestored && history.length > 0) {
+						try {
+							let addedCount = 0;
+							for (const message of history) {
+								try {
+									await this.contextManager.addMessage(message);
+									addedCount++;
+								} catch (addError) {
+									logger.warn(
+										`Session ${this.id}: Failed to add message ${addedCount + 1}:`,
+										addError
+									);
+								}
+							}
+							historyRestored = addedCount > 0;
+							logger.debug(
+								`Session ${this.id}: Manually added ${addedCount}/${history.length} messages to context manager`
+							);
+						} catch (manualError) {
+							logger.warn(`Session ${this.id}: Manual message addition failed:`, manualError);
+						}
+					}
+
+					// CRITICAL FIX: Verify history restoration success
+					const contextMessages = this.contextManager.getRawMessages();
+					logger.info(
+						`Session ${this.id}: History refresh complete - Provider: ${history.length} messages, Context: ${contextMessages.length} messages, Restored: ${historyRestored}`
+					);
+				} else {
+					logger.debug(`Session ${this.id}: No history provider available for refresh`);
+					// Try to get existing history from context manager
+					try {
+						const messages = this.contextManager.getRawMessages();
+						logger.debug(
+							`Session ${this.id}: Context manager has ${messages.length} existing messages`
+						);
+					} catch (fallbackError) {
+						logger.debug(
+							`Session ${this.id}: Failed to get history from context manager:`,
+							fallbackError
+						);
+					}
+				}
 			} catch (error) {
 				logger.warn(`Session ${this.id}: Failed to refresh conversation history:`, error);
+				// Don't throw the error, just log it and continue
 			}
+		} else {
+			logger.debug(`Session ${this.id}: History not enabled or context manager not available`);
 		}
 	}
 
@@ -1200,6 +1489,22 @@ export class ConversationSession {
 				return [];
 			}
 		} else {
+			// Try to get history from context manager as fallback
+			try {
+				if (this.contextManager) {
+					const messages = this.contextManager.getRawMessages();
+					logger.debug(
+						`Session ${this.id}: Got ${messages.length} messages from context manager as fallback`
+					);
+					return messages;
+				}
+			} catch (fallbackError) {
+				logger.debug(
+					`Session ${this.id}: Failed to get history from context manager:`,
+					fallbackError
+				);
+			}
+
 			logger.debug(`Session ${this.id}: No history provider available`);
 			return [];
 		}
@@ -1237,7 +1542,24 @@ export class ConversationSession {
 					);
 				}
 			}
-			logger.info(`Session ${this.id}: Serialized with ${conversationHistory.length} messages`);
+
+			// CRITICAL FIX: If no history from provider, try to get from context manager as fallback
+			if (conversationHistory.length === 0 && this.contextManager) {
+				try {
+					const contextHistory = this.contextManager.getRawMessages();
+					if (contextHistory.length > 0) {
+						conversationHistory = contextHistory;
+						logger.debug(
+							`Session ${this.id}: Using context manager history as fallback (${contextHistory.length} messages)`
+						);
+					}
+				} catch (fallbackError) {
+					logger.debug(
+						`Session ${this.id}: Failed to get history from context manager during serialization:`,
+						fallbackError
+					);
+				}
+			}
 
 			// Note: We don't serialize functions (mergeMetadata, beforeMemoryExtraction)
 			// as they're unsafe to deserialize and restore. These will need to be
@@ -1335,21 +1657,33 @@ export class ConversationSession {
 			// Initialize the session
 			await session.init();
 
-			// Restore conversation history if we have a history provider and serialized history
-			if (session._historyProvider && data.conversationHistory.length > 0) {
+			// Restore conversation history if we have serialized history
+			if (data.conversationHistory.length > 0) {
 				try {
-					// Clear any existing history first
-					await session._historyProvider.clearHistory(data.id);
+					// Ensure history provider is initialized
+					const historyProvider = await session.getHistoryProvider();
 
-					// Restore messages one by one to maintain order and validation
-					for (const message of data.conversationHistory) {
-						await session._historyProvider.saveMessage(data.id, message);
+					if (historyProvider) {
+						// Clear any existing history first
+						await historyProvider.clearHistory(data.id);
+
+						// Restore messages one by one to maintain order and validation
+						for (const message of data.conversationHistory) {
+							await historyProvider.saveMessage(data.id, message);
+						}
+
+						logger.debug(
+							`Session ${data.id}: Restored ${data.conversationHistory.length} messages to history provider`
+						);
+					} else {
+						logger.warn(`Session ${data.id}: No history provider available for restoration`);
 					}
 
-					// Restore conversation history to context manager so AI can see previous messages
+					// Always try to refresh conversation history to context manager
+					// This is critical for UI mode to see previous messages
 					await session.refreshConversationHistory();
 					logger.info(
-						`Session ${data.id}: Restored ${data.conversationHistory.length} messages to context manager`
+						`Session ${data.id}: Restored ${data.conversationHistory.length} messages and refreshed context manager`
 					);
 				} catch (error) {
 					logger.warn(
@@ -1358,6 +1692,8 @@ export class ConversationSession {
 					);
 					// Continue without history rather than failing
 				}
+			} else {
+				logger.debug(`Session ${data.id}: No conversation history to restore`);
 			}
 
 			return session;

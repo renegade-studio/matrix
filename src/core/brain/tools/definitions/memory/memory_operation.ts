@@ -65,10 +65,6 @@ export const MEMORY_OPERATION_TOOL = {
 								type: 'number',
 								description: 'Confidence score for the operation decision (0.0 to 1.0).',
 							},
-							reasoning: {
-								type: 'string',
-								description: 'Explanation for why this operation was chosen.',
-							},
 						},
 						required: ['id', 'text', 'event', 'tags'],
 						additionalProperties: false,
@@ -121,7 +117,6 @@ export interface MemoryAction {
 	old_memory?: string;
 	code_pattern?: string;
 	confidence: number; // Confidence score
-	reasoning: string; // Decision reasoning
 }
 
 /**
@@ -164,121 +159,60 @@ const DEFAULT_OPTIONS = {
  * Prompts for LLM decision making
  */
 const MEMORY_OPERATION_PROMPTS = {
-	SYSTEM_PROMPT: `You are an intelligent memory management system for a programming-focused AI agent. Your task is to analyze extracted knowledge facts and determine the best memory operations (ADD, UPDATE, DELETE, NONE) based on similarity with existing memories and contextual understanding.
+	SYSTEM_PROMPT: `You analyze programming knowledge facts and decide ADD, UPDATE, DELETE, or NONE using similarity with existing memories and context.
 
-IMPORTANT: Only process facts that contain significant programming knowledge, concepts, technical details, code patterns, or implementation information. Skip personal information, trivial conversations, or non-technical content.
+Process only significant technical content (concepts, code details, patterns, implementations). Skip personal or trivial content.
 
-Consider these factors:
-1. Technical relevance and programming value
-2. Content similarity and semantic overlap  
-3. Information recency and relevance
-4. Knowledge quality and completeness
-5. Conversation context and technical needs
-6. Implementation details and code patterns
+Consider:
+1) Technical relevance and value
+2) Semantic similarity/overlap
+3) Recency and contextual relevance
+4) Quality and completeness
+5) Conversation context and needs
+6) Concrete code/pattern details
 
 Rules:
-- ADD: For new, unique programming knowledge that doesn't duplicate existing memories
-- UPDATE: For enhanced or corrected versions of existing technical knowledge
-- DELETE: For outdated, incorrect, or contradictory technical information that should be removed
-- NONE: For duplicates, information already well-represented, or non-significant content
+- ADD: New, unique technical knowledge
+- UPDATE: Improves/corrects existing technical knowledge
+- DELETE: Outdated/incorrect/contradictory information
+- NONE: Duplicate, already covered, or non-significant
 
-Always preserve code blocks, commands, technical patterns, and implementation details exactly as provided. Focus on extracting meaningful programming concepts, algorithms, design patterns, best practices, and technical solutions.`,
+Always preserve full code blocks/commands/patterns exactly as given.`,
 
-	DECISION_PROMPT: `Analyze the following knowledge fact and determine the appropriate memory operation. Follow these steps:
+	DECISION_PROMPT: `Analyze the knowledge fact and choose ADD, UPDATE, DELETE, or NONE.
 
-1. Compare the fact to the provided similar memories (using semantic similarity, not just keywords).
-2. If the fact is new and not present in any similar memory (similarity below threshold), choose ADD.
-3. If the fact is more complete or correct than a similar memory, choose UPDATE and specify the targetMemoryId.
-4. If the fact is redundant or already present, choose NONE.
-5. If the fact contradicts an existing memory, choose DELETE and specify the targetMemoryId.
-6. Always provide a confidence score (0.0 to 1.0) and clear reasoning.
+Steps:
+1) Compare with similar memories (semantic similarity, not keywords).
+2) If none are similar (below threshold) -> ADD.
+3) If more correct/complete than a similar memory -> UPDATE (include targetMemoryId).
+4) If redundant/already present -> NONE.
+5) If contradicts an existing memory -> DELETE (include targetMemoryId).
+6) Always include a confidence score (0.0–1.0).
 
-**Examples:**
+Examples:
+- ADD
+  Similar: none
+  { "operation": "ADD", "confidence": 0.95, "targetMemoryId": null }
 
-Example 1 (ADD):
-KNOWLEDGE FACT:
-"The 'merge_sort' function in Python recursively splits the array and merges sorted halves."
-SIMILAR EXISTING MEMORIES:
-No similar memories found.
-CONVERSATION CONTEXT:
-No specific context provided.
+- UPDATE
+  Similar: 12345 (0.91)
+  { "operation": "UPDATE", "confidence": 0.90, "targetMemoryId": 12345 }
 
-JSON RESPONSE:
-{
-  "operation": "ADD",
-  "confidence": 0.95,
-  "reasoning": "This is a new technical fact about merge sort not present in the memory base.",
-  "targetMemoryId": null
-}
+- NONE
+  Similar: 67890 (0.95)
+  { "operation": "NONE", "confidence": 0.98, "targetMemoryId": 67890 }
 
-Example 2 (UPDATE):
-KNOWLEDGE FACT:
-"The 'bubble_sort' function in Python sorts the array in-place and includes an optimization to stop early if no swaps are made."
-SIMILAR EXISTING MEMORIES:
-1. ID: 12345 (similarity: 0.91)
-   Content: The 'bubble_sort' function in Python sorts the array in-place.
-CONVERSATION CONTEXT:
-No specific context provided.
-
-JSON RESPONSE:
-{
-  "operation": "UPDATE",
-  "confidence": 0.9,
-  "reasoning": "The new fact adds an optimization detail not present in the existing memory.",
-  "targetMemoryId": 12345
-}
-
-Example 3 (NONE):
-KNOWLEDGE FACT:
-"The 'quick_sort' function sorts an array in-place using a pivot."
-SIMILAR EXISTING MEMORIES:
-1. ID: 67890 (similarity: 0.95)
-   Content: The 'quick_sort' function sorts an array in-place using a pivot.
-CONVERSATION CONTEXT:
-No specific context provided.
-
-JSON RESPONSE:
-{
-  "operation": "NONE",
-  "confidence": 0.98,
-  "reasoning": "The fact is already present in the memory base.",
-  "targetMemoryId": 67890
-}
-
-Example 4 (DELETE):
-KNOWLEDGE FACT:
-"The 'selection_sort' function in Python is NOT a stable sorting algorithm."
-SIMILAR EXISTING MEMORIES:
-1. ID: 54321 (similarity: 0.92)
-   Content: The 'selection_sort' function in Python is a stable sorting algorithm.
-CONVERSATION CONTEXT:
-No specific context provided.
-
-JSON RESPONSE:
-{
-  "operation": "DELETE",
-  "confidence": 0.93,
-  "reasoning": "The new fact contradicts the existing memory, which incorrectly states that selection sort is stable.",
-  "targetMemoryId": 54321
-}
+- DELETE
+  Similar: 54321 (0.92)
+  { "operation": "DELETE", "confidence": 0.93, "targetMemoryId": 54321 }
 
 ---
-KNOWLEDGE FACT:
-{fact}
+FACT: {fact}
+SIMILAR: {similarMemories}
+CONTEXT: {context}
 
-SIMILAR EXISTING MEMORIES:
-{similarMemories}
-
-CONVERSATION CONTEXT:
-{context}
-
-For this knowledge fact, respond ONLY with a single JSON object in the following format (do not include any explanation or text outside the JSON):
-{
-  "operation": "ADD|UPDATE|DELETE|NONE",
-  "confidence": 0.0-1.0,
-  "reasoning": "Clear explanation of the decision",
-  "targetMemoryId": "id-if-updating-or-deleting-or-none"
-}`,
+Respond ONLY with:
+{ "operation": "ADD|UPDATE|DELETE|NONE", "confidence": 0.0-1.0, "targetMemoryId": "id-if-updating-or-deleting-or-none" }`,
 };
 
 /**
@@ -530,7 +464,6 @@ export const memoryOperationTool: InternalTool = {
 								event: 'ADD',
 								tags,
 								confidence: 0.6,
-								reasoning: `Fallback to ADD due to embedding failure - embeddings disabled globally`,
 								...(codePattern && { code_pattern: codePattern }),
 							};
 							fallbackDecisionsUsed++;
@@ -619,7 +552,6 @@ export const memoryOperationTool: InternalTool = {
 							event: 'ADD',
 							tags,
 							confidence: 0.6, // Increased from 0.5 to exceed threshold
-							reasoning: `Fallback to ADD due to analysis error (${error instanceof Error ? error.message : String(error)})`,
 							...(codePattern && { code_pattern: codePattern }),
 						};
 						fallbackDecisionsUsed++;
@@ -636,9 +568,6 @@ export const memoryOperationTool: InternalTool = {
 						event: isNew ? 'ADD' : 'NONE',
 						tags,
 						confidence: isNew ? 0.7 : 0.5, // Higher confidence for new memories
-						reasoning: isNew
-							? 'No similar memories found in basic analysis'
-							: 'Similar memory detected in basic analysis',
 						...(codePattern && { code_pattern: codePattern }),
 					};
 					fallbackDecisionsUsed++;
@@ -657,7 +586,6 @@ export const memoryOperationTool: InternalTool = {
 					});
 
 					memoryAction.event = 'NONE';
-					memoryAction.reasoning += ` (Low confidence: ${memoryAction.confidence.toFixed(2)})`;
 				}
 
 				memoryActions.push(memoryAction);
@@ -801,7 +729,7 @@ async function llmDetermineMemoryOperation(
 			event: decision.operation as 'ADD' | 'UPDATE' | 'DELETE' | 'NONE',
 			tags,
 			confidence: Math.max(0, Math.min(1, decision.confidence || 0.7)),
-			reasoning: decision.reasoning || 'LLM decision',
+
 			...(codePattern && { code_pattern: codePattern }),
 		};
 
@@ -834,7 +762,6 @@ async function llmDetermineMemoryOperation(
 			operation: memoryAction.event,
 			confidence: memoryAction.confidence,
 			memoryId: memoryAction.id,
-			reasoning: memoryAction.reasoning.substring(0, 100),
 		});
 
 		return memoryAction;
@@ -1351,7 +1278,6 @@ async function determineMemoryOperation(
 			event: 'ADD',
 			tags,
 			confidence: 0.8,
-			reasoning: 'No similar memories found - adding as new knowledge',
 			...(codePattern && { code_pattern: codePattern }),
 		};
 	}
@@ -1368,7 +1294,6 @@ async function determineMemoryOperation(
 			event: 'NONE',
 			tags,
 			confidence: 0.9,
-			reasoning: `High similarity (${similarity.toFixed(2)}) with existing memory - no action needed`,
 			...(codePattern && { code_pattern: codePattern }),
 		};
 	}
@@ -1381,7 +1306,6 @@ async function determineMemoryOperation(
 			event: 'UPDATE',
 			tags,
 			confidence: 0.75,
-			reasoning: `Medium similarity (${similarity.toFixed(2)}) - updating existing memory`,
 			old_memory: mostSimilar.payload?.data || mostSimilar.text || '',
 			...(codePattern && { code_pattern: codePattern }),
 		};
@@ -1394,7 +1318,6 @@ async function determineMemoryOperation(
 		event: 'ADD',
 		tags,
 		confidence: 0.7,
-		reasoning: `Low similarity (${similarity.toFixed(2)}) - adding as new knowledge`,
 		...(codePattern && { code_pattern: codePattern }),
 	};
 }
@@ -1466,11 +1389,6 @@ async function persistMemoryActions(
 
 			// Determine quality source for V2 payload
 			let qualitySource: 'similarity' | 'llm' | 'heuristic' = 'heuristic';
-			if (action.reasoning?.includes('LLM')) {
-				qualitySource = 'llm';
-			} else if (action.reasoning?.includes('similarity')) {
-				qualitySource = 'similarity';
-			}
 
 			// Create V2 payload with enhanced metadata
 			const payload = createKnowledgePayload(
@@ -1478,7 +1396,6 @@ async function persistMemoryActions(
 				action.text || '',
 				action.tags,
 				action.confidence,
-				action.reasoning,
 				action.event,
 				{
 					qualitySource,
@@ -1512,5 +1429,104 @@ async function persistMemoryActions(
 		}
 	}
 }
+/**
+ * Step 1: Rewrite user query into sub-queries and disambiguate ambiguous terms
+ * Uses LLM to generate more targeted queries for better retrieval
+ *
+ * @param originalInput - The original user query to rewrite
+ * @param llmService - The LLM service to use for rewriting
+ * @returns An object containing the rewritten queries
+ */
+async function rewriteUserQuery(
+	originalInput: string,
+	llmService: any
+): Promise<{ queries: string[] }> {
+	// Add debugging to track function calls
+	const callId = Math.random().toString(36).substring(7);
+	console.log(`🔄 [${callId}] rewriteUserQuery called with: "${originalInput}"`);
 
-export { parseLLMDecision, MEMORY_OPERATION_PROMPTS, extractTechnicalTags };
+	try {
+		const rewritePrompt = `
+        You are a query decomposition and disambiguation expert. Break down this question into search queries for a knowledge base while handling ambiguous terms.
+
+        QUESTION: "${originalInput}"
+
+		TASK: Create 2-4 concise search queries that capture the core information needs of the question. Only include disambiguation if absolutely necessary.
+
+		GUIDELINES:
+		- Focus on the main intent of the question.
+		- Use natural, searchable language (4-15 words per query).
+		- Only create disambiguation queries for clearly ambiguous terms.
+		- Avoid over-decomposing the question into too many subqueries.
+		- Prefer fewer, more precise queries over exhaustive coverage.
+		- Each query should stand alone and be understandable without additional context.
+
+		DISAMBIGUATION (Only if needed):
+		- For truly ambiguous terms (homonyms, abbreviations, etc.), include 1-2 alternate queries with different meanings.
+		- Do not force disambiguation where the meaning is already clear from context.
+
+        OUTPUT FORMAT:
+        Respond with ONLY the queries, one per line, using this exact format:
+        Query 1: [first query]
+        Query 2: [second query]
+        [continue as needed...]
+
+        Do not include any explanations, introductions, or other text. Only the queries.
+
+        EXAMPLES:
+        Question: "What profession does Nicholas Ray and Elia Kazan have in common?"
+        Query 1: Nicholas Ray profession career
+        Query 2: Elia Kazan profession career
+
+        Question: "Most total goals in a premier league season?"
+        Query 1: Most total goals in a premier league season by a team
+        Query 2: Most total goals in a premier league season by a player
+
+        Now decompose and disambiguate: "${originalInput}"
+        `;
+		const rewriteResponse = await llmService.directGenerate(rewritePrompt);
+
+		// Parse the response to extract individual queries
+		const queries = rewriteResponse
+			.split('\n')
+			.map((line: string) => line.trim())
+			.filter((line: string) => line.length > 0)
+			.map((line: string) => {
+				// Extract query content after "Query X:" prefix
+				const match = line.match(/^Query\s*\d+:\s*(.+)$/i);
+				return match && match[1] ? match[1].trim() : null;
+			})
+			.filter((query: string | null) => query !== null && query.length >= 3)
+			.filter(
+				(query: string | null, index: number, array: (string | null)[]) =>
+					array.indexOf(query) === index
+			); // Remove duplicates
+
+		console.log(`🔄 [${callId}] Parsed queries:`, queries);
+		console.log(`🔄 [${callId}] Query count: ${queries.length}`);
+
+		// Ensure we have at least one query (fallback to original)
+		if (queries.length === 0) {
+			console.log(`🔄 [${callId}] No queries parsed, falling back to original input`);
+			return {
+				queries: [originalInput],
+			};
+		}
+
+		console.log(`🔄 [${callId}] Returning ${queries.length} refined queries`);
+		return {
+			queries: queries,
+		};
+	} catch (error) {
+		console.log(`🔄 [${callId}] Error in rewriteUserQuery:`, error);
+		logger.warn('MemorySearch: Query rewriting failed', {
+			originalInput: originalInput.substring(0, 100),
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return {
+			queries: [originalInput],
+		};
+	}
+}
+
+export { parseLLMDecision, MEMORY_OPERATION_PROMPTS, extractTechnicalTags, rewriteUserQuery };

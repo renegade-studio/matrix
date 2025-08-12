@@ -10,6 +10,9 @@ import { ILLMService, LLMServiceConfig } from './types.js';
 // const OpenAI = require('openai');
 import { logger } from '../../../logger/index.js';
 import { formatToolResult } from '../utils/tool-result-formatter.js';
+import { EventManager } from '../../../events/event-manager.js';
+import { SessionEvents } from '../../../events/event-types.js';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface QwenOptions {
 	enableThinking?: boolean;
@@ -25,6 +28,7 @@ export class QwenService implements ILLMService {
 	private contextManager: ContextManager;
 	private maxIterations: number;
 	private qwenOptions: QwenOptions;
+	private eventManager?: EventManager;
 
 	constructor(
 		openai: any,
@@ -44,8 +48,28 @@ export class QwenService implements ILLMService {
 		this.qwenOptions = qwenOptions;
 	}
 
+	setEventManager(eventManager: EventManager): void {
+		this.eventManager = eventManager;
+	}
+
 	async generate(userInput: string, imageData?: ImageData, stream?: boolean): Promise<string> {
 		await this.contextManager.addUserMessage(userInput, imageData);
+
+		const messageId = uuidv4();
+		const startTime = Date.now();
+
+		// Try to get sessionId from contextManager if available, otherwise undefined
+		const sessionId = (this.contextManager as any)?.sessionId;
+
+		// Emit LLM response started event
+		if (this.eventManager && sessionId) {
+			this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_RESPONSE_STARTED, {
+				sessionId,
+				messageId,
+				model: this.model,
+				timestamp: startTime,
+			});
+		}
 
 		let formattedTools: any[] = [];
 		if (this.unifiedToolManager) {
@@ -71,11 +95,33 @@ export class QwenService implements ILLMService {
 				) {
 					const responseText = message.content || '';
 					await this.contextManager.addAssistantMessage(responseText);
+
+					// Emit LLM response completed event
+					if (this.eventManager && sessionId) {
+						this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_RESPONSE_COMPLETED, {
+							sessionId,
+							messageId,
+							model: this.model,
+							duration: Date.now() - startTime,
+							timestamp: Date.now(),
+							response: responseText,
+						});
+					}
+
 					return responseText;
 				}
 
 				if (message.content && message.content.trim()) {
 					logger.info(`[Qwen] 💭 ${message.content.trim()}`);
+
+					// Emit thinking event
+					if (this.eventManager && sessionId) {
+						this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_THINKING, {
+							sessionId,
+							messageId,
+							timestamp: Date.now(),
+						});
+					}
 				}
 
 				await this.contextManager.addAssistantMessage(message.content, message.tool_calls);
@@ -99,7 +145,7 @@ export class QwenService implements ILLMService {
 					try {
 						let result: any;
 						if (this.unifiedToolManager) {
-							result = await this.unifiedToolManager.executeTool(toolName, args);
+							result = await this.unifiedToolManager.executeTool(toolName, args, sessionId);
 						} else {
 							result = await this.mcpManager.executeTool(toolName, args);
 						}

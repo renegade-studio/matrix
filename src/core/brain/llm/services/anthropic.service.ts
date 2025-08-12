@@ -111,10 +111,14 @@ export class AnthropicService {
 			// Limit to 3 files to avoid spam
 			try {
 				// Use file_search tool to find the file
-				const searchResult = await this.unifiedToolManager.executeTool('file_search', {
-					query: fileRef,
-					explanation: `Searching for file referenced by user: ${fileRef}`,
-				});
+				const searchResult = await this.unifiedToolManager.executeTool(
+					'file_search',
+					{
+						query: fileRef,
+						explanation: `Searching for file referenced by user: ${fileRef}`,
+					},
+					undefined
+				); // No sessionId available in this context
 
 				if (searchResult && Array.isArray(searchResult) && searchResult.length > 0) {
 					foundFiles.push(`Found file: ${fileRef} at ${searchResult[0]}`);

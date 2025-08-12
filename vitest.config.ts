@@ -11,12 +11,15 @@ export default defineConfig({
 	test: {
 		globals: true,
 		environment: 'node',
-		include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+		include: process.env.INTEGRATION_TESTS_ONLY 
+			? ['src/**/*integration*.test.ts']
+			: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
 		exclude: [
 			'**/node_modules/**',
 			'**/dist/**',
 			'**/build/**',
 			...(process.env.CI ? ['**/integration/**'] : []),
+			...(process.env.INTEGRATION_TESTS_ONLY ? [] : ['**/*integration*.test.ts']),
 		],
 		watch: true,
 	},

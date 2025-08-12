@@ -175,18 +175,22 @@ describe('ConversationSession', () => {
 
 		it('should initialize services correctly', async () => {
 			await session.init();
-			// init is now very simple, we check the side-effects of lazy loading later
-			expect(session.getContextManager()).toBe(mockContextManager);
+			// Session creates its own ContextManager instance now, not using the provided one
+			const contextManager = session.getContextManager();
+			expect(contextManager).toBeDefined();
+			expect(contextManager.sessionId).toBe(sessionId);
 
 			// Trigger lazy loading of LLM service
 			await session.getLLMService();
 
 			expect(mockStateManager.getLLMConfig).toHaveBeenCalledWith(sessionId);
+			// The session now passes the internally created context manager, not the mock
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				mockLLMConfig,
 				mockMcpManager,
-				mockContextManager,
-				mockUnifiedToolManager
+				expect.any(Object), // The internally created context manager
+				mockUnifiedToolManager,
+				undefined // event manager
 			);
 		});
 
@@ -524,7 +528,9 @@ describe('ConversationSession', () => {
 
 		it('should return context manager', () => {
 			const contextManager = session.getContextManager();
-			expect(contextManager).toBe(mockContextManager);
+			// Session creates its own ContextManager instance now
+			expect(contextManager).toBeDefined();
+			expect(contextManager.sessionId).toBe(sessionId);
 		});
 
 		it('should return LLM service', async () => {
@@ -573,8 +579,9 @@ describe('ConversationSession', () => {
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				sessionSpecificConfig,
 				mockMcpManager,
-				mockContextManager,
-				mockUnifiedToolManager
+				expect.any(Object), // The internally created context manager
+				mockUnifiedToolManager,
+				undefined // event manager
 			);
 		});
 
@@ -598,8 +605,9 @@ describe('ConversationSession', () => {
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				anthropicConfig,
 				mockMcpManager,
-				mockContextManager,
-				mockUnifiedToolManager
+				expect.any(Object), // The internally created context manager
+				mockUnifiedToolManager,
+				undefined // event manager
 			);
 		});
 	});

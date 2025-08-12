@@ -2,9 +2,11 @@ import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import http from 'http';
+import { WebSocketServer, WebSocket } from 'ws';
 import { MemAgent } from '@core/brain/memAgent/index.js';
 import { logger } from '@core/logger/index.js';
-import { errorResponse, ERROR_CODES } from './utils/response.js';
+import { errorResponse, successResponse, ERROR_CODES } from './utils/response.js';
 import {
 	requestIdMiddleware,
 	requestLoggingMiddleware,
@@ -14,12 +16,20 @@ import { Server as McpServer } from '@modelcontextprotocol/sdk/server/index.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { initializeMcpServer, initializeAgentCardResource } from '@app/mcp/mcp_handler.js';
 
+// Import WebSocket components
+import { WebSocketConnectionManager } from './websocket/connection-manager.js';
+import { WebSocketMessageRouter } from './websocket/message-router.js';
+import { WebSocketEventSubscriber } from './websocket/event-subscriber.js';
+import { WebSocketMessage, WebSocketConfig } from './websocket/types.js';
+
 // Import route handlers
 import { createMessageRoutes } from './routes/message.js';
 import { createSessionRoutes } from './routes/session.js';
 import { createMcpRoutes } from './routes/mcp.js';
 import { createConfigRoutes } from './routes/config.js';
 import { createLlmRoutes } from './routes/llm.js';
+import { createSearchRoutes } from './routes/search.js';
+import { createWebhookRoutes } from './routes/webhook.js';
 
 export interface ApiServerConfig {
 	port: number;
@@ -29,24 +39,85 @@ export interface ApiServerConfig {
 	rateLimitMaxRequests?: number;
 	mcpTransportType?: 'stdio' | 'sse' | 'http';
 	mcpPort?: number;
+	// WebSocket configuration
+	enableWebSocket?: boolean;
+	webSocketConfig?: WebSocketConfig;
+	// API prefix configuration
+	apiPrefix?: string;
 }
 
 export class ApiServer {
 	private app: Application;
 	private agent: MemAgent;
 	private config: ApiServerConfig;
+	private apiPrefix: string;
 	private mcpServer?: McpServer;
 	private activeMcpSseTransports: Map<string, SSEServerTransport> = new Map();
+
+	// WebSocket components
+	private httpServer?: http.Server;
+	private wss?: WebSocketServer;
+	private wsConnectionManager?: WebSocketConnectionManager;
+	private wsMessageRouter?: WebSocketMessageRouter;
+	private wsEventSubscriber?: WebSocketEventSubscriber;
+	private heartbeatInterval?: NodeJS.Timeout;
 
 	constructor(agent: MemAgent, config: ApiServerConfig) {
 		this.agent = agent;
 		this.config = config;
+
+		// Validate and set API prefix
+		this.apiPrefix = this.validateAndNormalizeApiPrefix(config.apiPrefix);
+
 		this.app = express();
 		this.setupMiddleware();
 		this.setupRoutes();
 		this.setupErrorHandling();
 
 		// Note: MCP setup is now handled in start() method to properly handle async operations
+	}
+
+	/**
+	 * Validate and normalize API prefix configuration
+	 */
+	private validateAndNormalizeApiPrefix(prefix?: string): string {
+		// Default to '/api' for backward compatibility
+		if (prefix === undefined) {
+			return '/api';
+		}
+
+		// Allow empty string to disable prefix
+		if (prefix === '') {
+			return '';
+		}
+
+		// Validate prefix format
+		if (typeof prefix !== 'string') {
+			throw new Error('API prefix must be a string');
+		}
+
+		// Ensure prefix starts with '/' if not empty
+		if (!prefix.startsWith('/')) {
+			prefix = '/' + prefix;
+		}
+
+		// Remove trailing slash to normalize
+		if (prefix.endsWith('/') && prefix !== '/') {
+			prefix = prefix.slice(0, -1);
+		}
+
+		logger.info(`[API Server] Using API prefix: '${prefix || '(none)'}'`);
+		return prefix;
+	}
+
+	/**
+	 * Helper method to construct API route paths
+	 */
+	private buildApiRoute(route: string): string {
+		if (!this.apiPrefix || this.apiPrefix === '') {
+			return route;
+		}
+		return `${this.apiPrefix}${route}`;
 	}
 
 	private async setupMcpServer(
@@ -67,7 +138,7 @@ export class ApiServer {
 			logger.info(`[API Server] MCP server mode: ${mcpServerMode}`);
 
 			// Load aggregator configuration if needed
-			let aggregatorConfig;
+			let aggregatorConfig: any = undefined;
 			if (mcpServerMode === 'aggregator') {
 				aggregatorConfig = await this.loadAggregatorConfig();
 			}
@@ -131,15 +202,17 @@ export class ApiServer {
 		}
 
 		// Handle SSE GET endpoint (for client to establish SSE connection)
-		this.app.get('/mcp/sse', (req: Request, res: Response) => {
+		this.app.get(this.buildApiRoute('/mcp/sse'), (req: Request, res: Response) => {
 			logger.info('[API Server] New MCP SSE client attempting connection.');
 			logger.debug('[API Server] SSE Request Headers:', req.headers);
 			logger.debug('[API Server] SSE Request URL:', req.url);
 
-			// Create SSE transport instance. The '/mcp' is the endpoint where client will POST messages.
+			// Create SSE transport instance. The buildApiRoute('/mcp') is the endpoint where client will POST messages.
 			// The SSEServerTransport will handle setting the SSE headers itself
-			const sseTransport = new SSEServerTransport('/mcp', res);
-			logger.debug('[API Server] SSEServerTransport created with endpoint /mcp');
+			const sseTransport = new SSEServerTransport(this.buildApiRoute('/mcp'), res);
+			logger.debug(
+				`[API Server] SSEServerTransport created with endpoint ${this.buildApiRoute('/mcp')}`
+			);
 
 			// Connect MCP server to this SSE transport (this will call sseTransport.start() and set headers)
 			this.mcpServer?.connect(sseTransport);
@@ -167,7 +240,7 @@ export class ApiServer {
 		});
 
 		// Handle POST requests for MCP messages over HTTP (part of Streamable HTTP)
-		this.app.post('/mcp', async (req: Request, res: Response) => {
+		this.app.post(this.buildApiRoute('/mcp'), async (req: Request, res: Response) => {
 			logger.debug('[API Server] MCP POST request received');
 			logger.debug('[API Server] POST Request Headers:', req.headers);
 			logger.debug('[API Server] POST Request Body:', req.body);
@@ -237,9 +310,178 @@ export class ApiServer {
 			}
 		});
 
+		const mcpSseRoute = this.buildApiRoute('/mcp/sse');
+		const mcpPostRoute = this.buildApiRoute('/mcp');
 		logger.info(
-			'[API Server] MCP SSE (GET /mcp/sse) and POST (/mcp?sessionId=...) routes registered.'
+			`[API Server] MCP SSE (GET ${mcpSseRoute}) and POST (${mcpPostRoute}?sessionId=...) routes registered.`
 		);
+	}
+
+	/**
+	 * Set up WebSocket server and event handling
+	 */
+	private setupWebSocket(): void {
+		if (!this.config.enableWebSocket || !this.httpServer) {
+			logger.debug('[API Server] WebSocket disabled or HTTP server not available');
+			return;
+		}
+
+		const wsConfig = this.config.webSocketConfig || {};
+
+		// Create WebSocket server
+		this.wss = new WebSocketServer({
+			server: this.httpServer,
+			path: wsConfig.path || '/ws',
+			...(wsConfig.maxConnections && { maxClients: wsConfig.maxConnections }),
+			...(wsConfig.enableCompression !== undefined && {
+				perMessageDeflate: wsConfig.enableCompression,
+			}),
+		});
+
+		// Initialize WebSocket components
+		this.wsConnectionManager = new WebSocketConnectionManager(
+			wsConfig.maxConnections || 1000,
+			wsConfig.connectionTimeout || 300000
+		);
+
+		this.wsMessageRouter = new WebSocketMessageRouter(this.agent, this.wsConnectionManager);
+
+		this.wsEventSubscriber = new WebSocketEventSubscriber(
+			this.wsConnectionManager,
+			this.agent.services.eventManager
+		);
+
+		// Wire up the connection manager to notify the event subscriber
+		this.wsConnectionManager.setEventSubscriber(this.wsEventSubscriber);
+
+		// Set up WebSocket connection handler
+		this.wss.on('connection', (ws: WebSocket, request) => {
+			this.handleWebSocketConnection(ws, request);
+		});
+
+		// Start event subscription
+		this.wsEventSubscriber.subscribe();
+
+		// Set up heartbeat if configured
+		if (wsConfig.heartbeatInterval && wsConfig.heartbeatInterval > 0) {
+			this.heartbeatInterval = setInterval(() => {
+				this.wsConnectionManager?.sendHeartbeat();
+			}, wsConfig.heartbeatInterval);
+		}
+
+		// Set up graceful shutdown handling
+		process.on('SIGTERM', () => {
+			this.shutdownWebSocket();
+		});
+
+		process.on('SIGINT', () => {
+			this.shutdownWebSocket();
+		});
+
+		logger.info('[API Server] WebSocket server initialized', {
+			path: wsConfig.path || '/ws',
+			maxConnections: wsConfig.maxConnections || 1000,
+			compression: wsConfig.enableCompression !== false,
+			heartbeat: wsConfig.heartbeatInterval || 'disabled',
+		});
+	}
+
+	/**
+	 * Handle new WebSocket connection
+	 */
+	private handleWebSocketConnection(ws: WebSocket, request: http.IncomingMessage): void {
+		try {
+			// Extract session ID from query parameters if provided
+			const url = new URL(request.url || '', `http://${request.headers.host}`);
+			const sessionId = url.searchParams.get('sessionId') || undefined;
+
+			// Add connection to manager
+			const connectionId = this.wsConnectionManager!.addConnection(ws, sessionId);
+
+			logger.info('[API Server] New WebSocket connection established', {
+				connectionId,
+				sessionId,
+				origin: request.headers.origin,
+				userAgent: request.headers['user-agent'],
+			});
+
+			// Set up message handler
+			ws.on('message', async (data: Buffer) => {
+				try {
+					const message = JSON.parse(data.toString()) as WebSocketMessage;
+					await this.wsMessageRouter!.routeMessage(ws, connectionId, message);
+				} catch (error) {
+					logger.error('[API Server] Error parsing WebSocket message', {
+						connectionId,
+						error: error instanceof Error ? error.message : String(error),
+						rawData: data.toString().substring(0, 200), // Log first 200 chars
+					});
+
+					// Send error response
+					if (ws.readyState === WebSocket.OPEN) {
+						ws.send(
+							JSON.stringify({
+								event: 'error',
+								error: 'Invalid message format',
+								data: {
+									message: 'Failed to parse JSON message',
+									code: 'INVALID_JSON',
+								},
+								timestamp: Date.now(),
+							})
+						);
+					}
+				}
+			});
+
+			// Send welcome message
+			if (ws.readyState === WebSocket.OPEN) {
+				ws.send(
+					JSON.stringify({
+						event: 'connected',
+						data: {
+							connectionId,
+							sessionId,
+							serverVersion: process.env.npm_package_version || 'unknown',
+							capabilities: ['streaming', 'tools', 'memory', 'reset'],
+						},
+						timestamp: Date.now(),
+					})
+				);
+			}
+		} catch (error) {
+			logger.error('[API Server] Error handling WebSocket connection', {
+				error: error instanceof Error ? error.message : String(error),
+				origin: request.headers.origin,
+			});
+
+			if (ws.readyState === WebSocket.OPEN) {
+				ws.close(1011, 'Server error during connection setup');
+			}
+		}
+	}
+
+	/**
+	 * Shutdown WebSocket server gracefully
+	 */
+	private shutdownWebSocket(): void {
+		if (this.heartbeatInterval) {
+			clearInterval(this.heartbeatInterval);
+		}
+
+		if (this.wsEventSubscriber) {
+			this.wsEventSubscriber.dispose();
+		}
+
+		if (this.wsConnectionManager) {
+			this.wsConnectionManager.dispose();
+		}
+
+		if (this.wss) {
+			this.wss.close(() => {
+				logger.info('[API Server] WebSocket server closed');
+			});
+		}
 	}
 
 	private setupMiddleware(): void {
@@ -275,7 +517,10 @@ export class ApiServer {
 			standardHeaders: true,
 			legacyHeaders: false,
 		});
-		this.app.use('/api/', limiter);
+		// Apply rate limiting to API routes if prefix is configured
+		if (this.apiPrefix) {
+			this.app.use(`${this.apiPrefix}/`, limiter);
+		}
 
 		// Body parsing middleware
 		this.app.use(express.json({ limit: '10mb' })); // Support for image data
@@ -288,22 +533,169 @@ export class ApiServer {
 
 	private setupRoutes(): void {
 		// Health check endpoint
-		this.app.get('/health', (req: Request, res: Response) => {
-			res.json({
+		this.app.get('/health', (_req: Request, res: Response) => {
+			const healthData: any = {
 				status: 'healthy',
 				timestamp: new Date().toISOString(),
 				uptime: process.uptime(),
 				version: process.env.npm_package_version || 'unknown',
+			};
+
+			// Add WebSocket health if enabled
+			if (this.config.enableWebSocket) {
+				healthData.websocket = {
+					enabled: true,
+					active: this.isWebSocketActive(),
+					stats: this.getWebSocketStats(),
+				};
+			}
+
+			res.json(healthData);
+		});
+
+		// WebSocket stats endpoint
+		this.app.get('/ws/stats', (_req: Request, res: Response) => {
+			if (!this.config.enableWebSocket) {
+				return res.status(404).json({
+					success: false,
+					error: {
+						code: 'WEBSOCKET_DISABLED',
+						message: 'WebSocket is not enabled',
+					},
+				});
+			}
+
+			const stats = this.getWebSocketStats();
+			return res.json({
+				success: true,
+				data: {
+					enabled: true,
+					active: this.isWebSocketActive(),
+					...stats,
+				},
 			});
 		});
 
 		// API routes
-		this.app.use('/api/message', createMessageRoutes(this.agent));
-		this.app.use('/api/sessions', createSessionRoutes(this.agent));
-		this.app.use('/api/mcp', createMcpRoutes(this.agent));
-		this.app.use('/api/llm', createLlmRoutes(this.agent));
-		this.app.use('/api/config', createConfigRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/message'), createMessageRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/sessions'), createSessionRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/mcp'), createMcpRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/llm'), createLlmRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/config'), createConfigRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/search'), createSearchRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/webhooks'), createWebhookRoutes(this.agent));
 
+		// Legacy endpoint for MCP server connection
+		this.app.post(this.buildApiRoute('/connect-server'), (req: Request, res: Response) => {
+			// Forward to MCP routes
+			req.url = '/servers';
+			createMcpRoutes(this.agent)(req, res, () => {});
+		});
+
+		// Chrome DevTools compatibility endpoint (prevents 404 errors in console)
+		this.app.get(
+			'/.well-known/appspecific/com.chrome.devtools.json',
+			(req: Request, res: Response) => {
+				res.status(204).end(); // No Content - indicates no DevTools integration available
+			}
+		);
+
+		// A2A (Agent-to-Agent) discovery endpoint
+		this.app.get('/.well-known/agent.json', (req: Request, res: Response) => {
+			try {
+				const agentCard = {
+					name: 'Cipher Agent',
+					description: 'Memory-powered AI agent framework with real-time communication',
+					version: process.env.npm_package_version || '1.0.0',
+					capabilities: ['conversation', 'memory', 'tools', 'mcp', 'websocket', 'streaming'],
+					endpoints: {
+						base: `${req.protocol}://${req.get('host')}`,
+						api: `${req.protocol}://${req.get('host')}${this.apiPrefix || ''}`,
+						websocket: `ws://${req.get('host')}/ws`,
+						health: `${req.protocol}://${req.get('host')}/health`,
+					},
+					contact: {
+						support: 'https://github.com/byterover/cipher',
+					},
+					protocols: ['http', 'websocket', 'mcp'],
+					timestamp: new Date().toISOString(),
+				};
+
+				res.json(agentCard);
+			} catch (error) {
+				logger.error('Failed to generate agent card', {
+					requestId: req.requestId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+
+				errorResponse(
+					res,
+					ERROR_CODES.INTERNAL_ERROR,
+					'Failed to generate agent discovery data',
+					500,
+					undefined,
+					req.requestId
+				);
+			}
+		});
+
+		// Global reset endpoint
+		this.app.post(this.buildApiRoute('/reset'), async (req: Request, res: Response) => {
+			try {
+				const { sessionId } = req.body;
+
+				logger.info('Processing global reset request', {
+					requestId: req.requestId,
+					sessionId: sessionId || 'all',
+				});
+
+				if (sessionId) {
+					// Reset specific session
+					const success = await this.agent.removeSession(sessionId);
+					if (!success) {
+						return errorResponse(
+							res,
+							ERROR_CODES.SESSION_NOT_FOUND,
+							`Session ${sessionId} not found`,
+							404,
+							undefined,
+							req.requestId
+						);
+					}
+				} else {
+					// Reset all sessions
+					const sessionIds = await this.agent.listSessions();
+					for (const id of sessionIds) {
+						await this.agent.removeSession(id);
+					}
+				}
+
+				successResponse(
+					res,
+					{
+						message: sessionId ? `Session ${sessionId} reset` : 'All sessions reset',
+						timestamp: new Date().toISOString(),
+					},
+					200,
+					req.requestId
+				);
+			} catch (error) {
+				const errorMsg = error instanceof Error ? error.message : String(error);
+				logger.error('Global reset failed', {
+					requestId: req.requestId,
+					error: errorMsg,
+				});
+
+				errorResponse(
+					res,
+					ERROR_CODES.INTERNAL_ERROR,
+					`Reset failed: ${errorMsg}`,
+					500,
+					process.env.NODE_ENV === 'development' ? error : undefined,
+					req.requestId
+				);
+			}
+		});
 		// Note: 404 handler moved to setup404Handler() and called after MCP routes setup
 	}
 
@@ -374,15 +766,33 @@ export class ApiServer {
 
 		return new Promise((resolve, reject) => {
 			try {
-				const server = this.app.listen(this.config.port, this.config.host || 'localhost', () => {
+				// Create HTTP server from Express app
+				this.httpServer = http.createServer(this.app);
+
+				// Set up WebSocket server if enabled
+				if (this.config.enableWebSocket) {
+					this.setupWebSocket();
+				}
+
+				this.httpServer.listen(this.config.port, this.config.host || 'localhost', () => {
 					logger.info(
 						`API Server started on ${this.config.host || 'localhost'}:${this.config.port}`,
 						null,
 						'green'
 					);
 					if (this.config.mcpTransportType) {
+						const mcpSseEndpoint = this.buildApiRoute('/mcp/sse');
+						const mcpEndpoint = this.buildApiRoute('/mcp');
 						logger.info(
-							`[API Server] MCP SSE endpoints available at /mcp/sse and /mcp`,
+							`[API Server] MCP SSE endpoints available at ${mcpSseEndpoint} and ${mcpEndpoint}`,
+							null,
+							'green'
+						);
+					}
+					if (this.config.enableWebSocket) {
+						const wsPath = this.config.webSocketConfig?.path || '/ws';
+						logger.info(
+							`[API Server] WebSocket server available at ws://${this.config.host || 'localhost'}:${this.config.port}${wsPath}`,
 							null,
 							'green'
 						);
@@ -390,7 +800,7 @@ export class ApiServer {
 					resolve();
 				});
 
-				server.on('error', err => {
+				this.httpServer.on('error', err => {
 					const errorMessage = err.message || err.toString() || 'Unknown error';
 					logger.error('Failed to start API server:', errorMessage);
 					logger.error('Error details:', err);
@@ -400,7 +810,8 @@ export class ApiServer {
 				// Graceful shutdown
 				process.on('SIGTERM', () => {
 					logger.info('SIGTERM received, shutting down API server gracefully');
-					server.close(() => {
+					this.shutdownWebSocket();
+					this.httpServer?.close(() => {
 						logger.info('API server stopped');
 						process.exit(0);
 					});
@@ -408,7 +819,8 @@ export class ApiServer {
 
 				process.on('SIGINT', () => {
 					logger.info('SIGINT received, shutting down API server gracefully');
-					server.close(() => {
+					this.shutdownWebSocket();
+					this.httpServer?.close(() => {
 						logger.info('API server stopped');
 						process.exit(0);
 					});
@@ -421,5 +833,39 @@ export class ApiServer {
 
 	public getApp(): Application {
 		return this.app;
+	}
+
+	/**
+	 * Get WebSocket statistics
+	 */
+	public getWebSocketStats(): any {
+		if (!this.wsConnectionManager || !this.wsEventSubscriber) {
+			return null;
+		}
+
+		return {
+			connections: this.wsConnectionManager.getStats(),
+			events: this.wsEventSubscriber.getStats(),
+			router: this.wsMessageRouter?.getStats(),
+		};
+	}
+
+	/**
+	 * Send system message to all WebSocket connections
+	 */
+	public broadcastSystemMessage(
+		message: string,
+		level: 'info' | 'warning' | 'error' = 'info'
+	): void {
+		if (this.wsEventSubscriber) {
+			this.wsEventSubscriber.sendSystemMessage(message, level);
+		}
+	}
+
+	/**
+	 * Check if WebSocket is enabled and active
+	 */
+	public isWebSocketActive(): boolean {
+		return !!(this.config.enableWebSocket && this.wss && this.wsEventSubscriber?.isActive());
 	}
 }

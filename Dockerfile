@@ -6,6 +6,9 @@ ARG NODE_VERSION=20.18.1
 # Build stage - optimized for smaller final image
 FROM node:${NODE_VERSION}-alpine AS builder
 
+# Build argument to control UI building (default: false)
+ARG BUILD_UI=false
+
 # Install build dependencies for native modules
 RUN apk add --no-cache \
     python3 \
@@ -26,7 +29,8 @@ RUN pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY . .
-RUN pnpm run build
+# Use conditional build based on BUILD_UI arg
+RUN if [ "$BUILD_UI" = "true" ]; then pnpm run build; else pnpm run build:no-ui; fi
 
 # Clean up and prepare production node_modules
 RUN pnpm prune --prod && \

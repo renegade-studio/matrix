@@ -7,6 +7,9 @@ import { ILLMService, LLMServiceConfig } from './types.js';
 import OpenAI from 'openai';
 import { logger } from '../../../logger/index.js';
 import { formatToolResult } from '../utils/tool-result-formatter.js';
+import { EventManager } from '../../../events/event-manager.js';
+import { SessionEvents } from '../../../events/event-types.js';
+import { v4 as uuidv4 } from 'uuid';
 
 export class OpenAIService implements ILLMService {
 	private openai: OpenAI;
@@ -15,6 +18,7 @@ export class OpenAIService implements ILLMService {
 	private unifiedToolManager: UnifiedToolManager | undefined;
 	private contextManager: ContextManager;
 	private maxIterations: number;
+	private eventManager?: EventManager;
 
 	constructor(
 		openai: OpenAI,
@@ -31,8 +35,32 @@ export class OpenAIService implements ILLMService {
 		this.contextManager = contextManager;
 		this.maxIterations = maxIterations;
 	}
+
+	/**
+	 * Set the event manager for emitting LLM response events
+	 */
+	setEventManager(eventManager: EventManager): void {
+		this.eventManager = eventManager;
+	}
+
 	async generate(userInput: string, imageData?: ImageData): Promise<string> {
 		await this.contextManager.addUserMessage(userInput, imageData);
+
+		const messageId = uuidv4();
+		const startTime = Date.now();
+
+		// Try to get sessionId from contextManager if available, otherwise undefined
+		const sessionId = (this.contextManager as any)?.sessionId;
+
+		// Emit LLM response started event
+		if (this.eventManager && sessionId) {
+			this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_RESPONSE_STARTED, {
+				sessionId,
+				messageId,
+				model: this.model,
+				timestamp: startTime,
+			});
+		}
 
 		// Use unified tool manager if available, otherwise fall back to MCP manager
 		let formattedTools: any[];
@@ -42,8 +70,6 @@ export class OpenAIService implements ILLMService {
 			const rawTools = await this.mcpManager.getAllTools();
 			formattedTools = this.formatToolsForOpenAI(rawTools);
 		}
-
-		logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
 
 		let iterationCount = 0;
 		try {
@@ -56,14 +82,37 @@ export class OpenAIService implements ILLMService {
 				// If there are no tool calls, we're done
 				if (!message.tool_calls || message.tool_calls.length === 0) {
 					const responseText = message.content || '';
+
 					// Add assistant message to history
 					await this.contextManager.addAssistantMessage(responseText);
+
+					// Emit LLM response completed event
+					if (this.eventManager && sessionId) {
+						this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_RESPONSE_COMPLETED, {
+							sessionId,
+							messageId,
+							model: this.model,
+							duration: Date.now() - startTime,
+							timestamp: Date.now(),
+							response: responseText,
+						});
+					}
+
 					return responseText;
 				}
 
 				// Log thinking steps when assistant provides reasoning before tool calls
 				if (message.content && message.content.trim()) {
 					logger.info(`💭 ${message.content.trim()}`);
+
+					// Emit thinking event
+					if (this.eventManager && sessionId) {
+						this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_THINKING, {
+							sessionId,
+							messageId,
+							timestamp: Date.now(),
+						});
+					}
 				}
 
 				// Add assistant message with tool calls to history
@@ -90,7 +139,7 @@ export class OpenAIService implements ILLMService {
 					try {
 						let result: any;
 						if (this.unifiedToolManager) {
-							result = await this.unifiedToolManager.executeTool(toolName, args);
+							result = await this.unifiedToolManager.executeTool(toolName, args, sessionId);
 						} else {
 							result = await this.mcpManager.executeTool(toolName, args);
 						}
@@ -99,32 +148,21 @@ export class OpenAIService implements ILLMService {
 						const formattedResult = formatToolResult(toolName, result);
 						logger.info(`📋 Tool Result:\n${formattedResult}`);
 
-						// Add tool result to message manager
+						// Add tool result to context
 						await this.contextManager.addToolResult(toolCall.id, toolName, result);
 					} catch (error) {
-						// Handle tool execution error
-						const errorMessage = error instanceof Error ? error.message : String(error);
-						logger.error(`Tool execution error for ${toolName}: ${errorMessage}`);
-
-						// Add error as tool result
+						logger.error(`Error executing tool ${toolName}:`, error);
 						await this.contextManager.addToolResult(toolCall.id, toolName, {
-							error: errorMessage,
+							error: error instanceof Error ? error.message : String(error),
 						});
 					}
 				}
 			}
 
-			// If we reached max iterations, return a message
-			logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
-			const finalResponse = 'Task completed but reached maximum tool call iterations.';
-			await this.contextManager.addAssistantMessage(finalResponse);
-			return finalResponse;
+			throw new Error(`Maximum iterations (${this.maxIterations}) exceeded`);
 		} catch (error) {
-			// Handle API errors
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error(`Error in OpenAI service API call: ${errorMessage}`, { error });
-			await this.contextManager.addAssistantMessage(`Error processing request: ${errorMessage}`);
-			return `Error processing request: ${errorMessage}`;
+			logger.error('Error in OpenAI service:', error);
+			throw error;
 		}
 	}
 

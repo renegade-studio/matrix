@@ -20,6 +20,9 @@ import {
 	BedrockDeepSeekMessageFormatter,
 	BedrockAI21MessageFormatter,
 } from '../messages/formatters/aws.js';
+import { EventManager } from '../../../events/event-manager.js';
+import { SessionEvents } from '../../../events/event-types.js';
+import { v4 as uuidv4 } from 'uuid';
 
 // Complete AWS Bedrock model families (2025)
 enum ModelFamily {
@@ -47,6 +50,7 @@ export class AwsService implements ILLMService {
 	private modelFamily: ModelFamily;
 	private inferenceProfileArn: string | undefined;
 	private formatter: any; // Should be IMessageFormatter, but use any for now if needed
+	private eventManager?: EventManager;
 
 	constructor(
 		model: string,
@@ -112,6 +116,10 @@ export class AwsService implements ILLMService {
 		);
 	}
 
+	setEventManager(eventManager: EventManager): void {
+		this.eventManager = eventManager;
+	}
+
 	private detectModelFamily(modelId: string): ModelFamily {
 		const id = modelId.toLowerCase();
 
@@ -172,52 +180,74 @@ export class AwsService implements ILLMService {
 	}
 
 	async generate(userInput: string, imageData?: ImageData): Promise<string> {
-		logger.info(`AWS generate called with userInput: ${userInput.substring(0, 100)}...`);
 		await this.contextManager.addUserMessage(userInput, imageData);
-		logger.info('User message added to context');
+
+		const messageId = uuidv4();
+		const startTime = Date.now();
+
+		// Try to get sessionId from contextManager if available, otherwise undefined
+		const sessionId = (this.contextManager as any)?.sessionId;
+
+		// Emit LLM response started event
+		if (this.eventManager && sessionId) {
+			this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_RESPONSE_STARTED, {
+				sessionId,
+				messageId,
+				model: this.model,
+				timestamp: startTime,
+			});
+		}
 
 		// Get formatted tools
 		let formattedTools: any[];
 		if (this.unifiedToolManager) {
-			logger.info('Getting tools from unified tool manager');
 			formattedTools = await this.unifiedToolManager.getToolsForProvider('aws');
 		} else {
-			logger.info('Getting tools from MCP manager');
 			const rawTools = await this.mcpManager.getAllTools();
 			formattedTools = this.formatToolsForBedrock(rawTools);
 		}
 
-		logger.info(`Got ${formattedTools.length} formatted tools`);
-		logger.silly(`Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
-
 		let iterationCount = 0;
 		try {
-			logger.info('Starting generation loop');
 			while (iterationCount < this.maxIterations) {
 				iterationCount++;
-				logger.info(`Generation iteration ${iterationCount}`);
 
-				logger.info('Calling getAIResponse');
+				// Get AI response
 				const response = await this.getAIResponse(formattedTools);
-				logger.info('Got AI response, parsing...');
-
-				// Parse response based on model family
 				const { textContent, toolCalls } = this.parseResponse(response);
-				logger.info(
-					`Parsed response - textContent length: ${textContent?.length || 0}, toolCalls: ${toolCalls.length}`
-				);
 
-				if (toolCalls.length === 0) {
-					// No tool calls, return the text content
-					logger.info('No tool calls, adding assistant message and returning');
+				// If there are no tool calls, we're done
+				if (!toolCalls || toolCalls.length === 0) {
+					// Add assistant message to history
 					await this.contextManager.addAssistantMessage(textContent);
-					logger.info('Assistant message added, returning response');
+
+					// Emit LLM response completed event
+					if (this.eventManager && sessionId) {
+						this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_RESPONSE_COMPLETED, {
+							sessionId,
+							messageId,
+							model: this.model,
+							duration: Date.now() - startTime,
+							timestamp: Date.now(),
+							response: textContent,
+						});
+					}
+
 					return textContent;
 				}
 
-				// Log thinking steps if there's text content before tool calls
+				// Log thinking steps when assistant provides reasoning before tool calls
 				if (textContent && textContent.trim()) {
 					logger.info(`💭 ${textContent.trim()}`);
+
+					// Emit thinking event
+					if (this.eventManager && sessionId) {
+						this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_THINKING, {
+							sessionId,
+							messageId,
+							timestamp: Date.now(),
+						});
+					}
 				}
 
 				await this.contextManager.addAssistantMessage(textContent, toolCalls);
@@ -234,7 +264,7 @@ export class AwsService implements ILLMService {
 						try {
 							let toolResult: string;
 							if (this.unifiedToolManager) {
-								toolResult = await this.unifiedToolManager.executeTool(toolName, args);
+								toolResult = await this.unifiedToolManager.executeTool(toolName, args, sessionId);
 							} else {
 								const toolExecutionResult = await this.mcpManager.executeTool(toolName, args);
 								toolResult = toolExecutionResult.content;

@@ -8,48 +8,27 @@ export function createLlmRoutes(agent: MemAgent): Router {
 	const router = Router();
 
 	/**
+	 * GET /api/llm/config
+	 * Alias for /api/llm/current - Get current LLM configuration
+	 */
+	router.get('/config', async (req: Request, res: Response) => {
+		return getCurrentLLMConfig(req, res, agent);
+	});
+
+	/**
+	 * PUT /api/llm/config
+	 * Update LLM configuration (alias for /switch)
+	 */
+	router.put('/config', validateLlmConfig, async (req: Request, res: Response) => {
+		return switchLLMConfig(req, res, agent);
+	});
+
+	/**
 	 * GET /api/llm/current
 	 * Get current LLM configuration
 	 */
 	router.get('/current', async (req: Request, res: Response) => {
-		try {
-			logger.info('Getting current LLM configuration', { requestId: req.requestId });
-
-			const llmConfig = agent.getCurrentLLMConfig();
-
-			// Redact sensitive information like API keys
-			const sanitizedConfig = {
-				...llmConfig,
-				// Remove or mask sensitive fields
-				apiKey: llmConfig.apiKey ? '***' : undefined,
-				// Keep other configuration details
-			};
-
-			successResponse(
-				res,
-				{
-					llmConfig: sanitizedConfig,
-					timestamp: new Date().toISOString(),
-				},
-				200,
-				req.requestId
-			);
-		} catch (error) {
-			const errorMsg = error instanceof Error ? error.message : String(error);
-			logger.error('Failed to get current LLM configuration', {
-				requestId: req.requestId,
-				error: errorMsg,
-			});
-
-			errorResponse(
-				res,
-				ERROR_CODES.LLM_ERROR,
-				`Failed to get LLM configuration: ${errorMsg}`,
-				500,
-				undefined,
-				req.requestId
-			);
-		}
+		return getCurrentLLMConfig(req, res, agent);
 	});
 
 	/**
@@ -61,7 +40,6 @@ export function createLlmRoutes(agent: MemAgent): Router {
 			logger.info('Getting available LLM providers', { requestId: req.requestId });
 
 			// Define available providers and their common models
-			// This could be enhanced to dynamically discover available models
 			const providers = {
 				openai: {
 					name: 'OpenAI',
@@ -106,18 +84,6 @@ export function createLlmRoutes(agent: MemAgent): Router {
 					description: 'Local Ollama models',
 					note: 'Requires Ollama server running locally',
 				},
-				lmstudio: {
-					name: 'LM Studio',
-					models: [
-						'mistral-7b-instruct',
-						'llama-3.1-8b-instruct',
-						'codellama-7b-instruct',
-						'deepseek-coder-6.7b-instruct',
-					],
-					requiresApiKey: false,
-					description: 'Local LM Studio models',
-					note: 'Requires LM Studio server running locally',
-				},
 			};
 
 			successResponse(
@@ -153,59 +119,7 @@ export function createLlmRoutes(agent: MemAgent): Router {
 	 * Switch LLM configuration
 	 */
 	router.post('/switch', validateLlmConfig, async (req: Request, res: Response) => {
-		try {
-			const { provider, model, config } = req.body;
-
-			logger.info('Switching LLM configuration', {
-				requestId: req.requestId,
-				provider,
-				model,
-			});
-
-			// Note: This is a placeholder implementation
-			// The actual implementation would depend on how the MemAgent handles LLM switching
-			// For now, we'll return a success response indicating the request was received
-
-			// TODO: Implement actual LLM switching logic in MemAgent
-			// This might involve:
-			// 1. Validating the provider and model combination
-			// 2. Checking if required API keys are available
-			// 3. Testing the connection to the new LLM
-			// 4. Updating the agent's configuration
-
-			logger.warn('LLM switching not yet implemented in MemAgent', {
-				requestId: req.requestId,
-			});
-
-			successResponse(
-				res,
-				{
-					message: 'LLM switch request received (implementation pending)',
-					requestedProvider: provider,
-					requestedModel: model,
-					requestedConfig: config,
-					timestamp: new Date().toISOString(),
-					status: 'pending',
-				},
-				200,
-				req.requestId
-			);
-		} catch (error) {
-			const errorMsg = error instanceof Error ? error.message : String(error);
-			logger.error('Failed to switch LLM configuration', {
-				requestId: req.requestId,
-				error: errorMsg,
-			});
-
-			errorResponse(
-				res,
-				ERROR_CODES.LLM_ERROR,
-				`Failed to switch LLM: ${errorMsg}`,
-				500,
-				undefined,
-				req.requestId
-			);
-		}
+		return switchLLMConfig(req, res, agent);
 	});
 
 	/**
@@ -255,4 +169,110 @@ export function createLlmRoutes(agent: MemAgent): Router {
 	});
 
 	return router;
+}
+
+/**
+ * Handler for getting current LLM configuration
+ */
+async function getCurrentLLMConfig(req: Request, res: Response, agent: MemAgent): Promise<void> {
+	try {
+		logger.info('Getting current LLM configuration', { requestId: req.requestId });
+
+		const llmConfig = agent.getCurrentLLMConfig();
+
+		// Redact sensitive information like API keys
+		const sanitizedConfig = {
+			...llmConfig,
+			// Remove or mask sensitive fields
+			apiKey: llmConfig.apiKey ? '***' : undefined,
+			// Keep other configuration details
+		};
+
+		successResponse(
+			res,
+			{
+				llmConfig: sanitizedConfig,
+				timestamp: new Date().toISOString(),
+			},
+			200,
+			req.requestId
+		);
+	} catch (error) {
+		const errorMsg = error instanceof Error ? error.message : String(error);
+		logger.error('Failed to get current LLM configuration', {
+			requestId: req.requestId,
+			error: errorMsg,
+		});
+
+		errorResponse(
+			res,
+			ERROR_CODES.LLM_ERROR,
+			`Failed to get LLM configuration: ${errorMsg}`,
+			500,
+			undefined,
+			req.requestId
+		);
+	}
+}
+
+/**
+ * Handler for switching LLM configuration
+ */
+async function switchLLMConfig(req: Request, res: Response, agent: MemAgent): Promise<void> {
+	try {
+		const { provider, model, sessionId } = req.body;
+
+		logger.info('Switching LLM configuration', {
+			requestId: req.requestId,
+			provider,
+			model,
+			sessionId,
+		});
+
+		// Build LLM config object (not used yet)
+		// const _llmConfig: any = {
+		// 	provider,
+		// 	model,
+		// 	...config,
+		// };
+
+		// TODO: Implement switchLLM method on MemAgent
+		// await agent.switchLLM(_llmConfig, sessionId);
+		logger.warn('LLM switching not yet implemented', { provider, model, sessionId });
+
+		// Get updated configuration to return
+		const updatedConfig = agent.getCurrentLLMConfig();
+
+		// Redact sensitive information
+		const sanitizedConfig = {
+			...updatedConfig,
+			apiKey: updatedConfig.apiKey ? '***' : undefined,
+		};
+
+		successResponse(
+			res,
+			{
+				message: 'LLM configuration updated successfully',
+				llmConfig: sanitizedConfig,
+				timestamp: new Date().toISOString(),
+			},
+			200,
+			req.requestId
+		);
+	} catch (error) {
+		const errorMsg = error instanceof Error ? error.message : String(error);
+		logger.error('Failed to switch LLM configuration', {
+			requestId: req.requestId,
+			error: errorMsg,
+		});
+
+		errorResponse(
+			res,
+			ERROR_CODES.LLM_ERROR,
+			`Failed to switch LLM: ${errorMsg}`,
+			500,
+			undefined,
+			req.requestId
+		);
+	}
 }

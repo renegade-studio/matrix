@@ -13,6 +13,72 @@ export function createMcpRoutes(agent: MemAgent): Router {
 	const router = Router();
 
 	/**
+	 * GET /api/mcp/tools
+	 * Get all tools from all connected MCP servers (global view)
+	 */
+	router.get('/tools', validateListParams, async (req: Request, res: Response) => {
+		try {
+			logger.info('Getting all MCP tools from all servers', { requestId: req.requestId });
+
+			const mcpClients = agent.getMcpClients();
+			const allTools: any[] = [];
+
+			// Collect tools from all connected servers
+			for (const [serverId, client] of mcpClients.entries()) {
+				try {
+					const tools = await client.getTools();
+
+					// Check if tools exist and is an array
+					if (tools && Array.isArray(tools)) {
+						// Add server context to each tool
+						const serverTools = tools.map((tool: any) => ({
+							...tool,
+							serverId,
+							serverName: serverId, // Could be enhanced with actual server names
+						}));
+
+						allTools.push(...serverTools);
+					}
+				} catch (error) {
+					logger.warn('Failed to get tools from MCP server', {
+						requestId: req.requestId,
+						serverId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					// Continue with other servers
+				}
+			}
+
+			successResponse(
+				res,
+				{
+					tools: allTools,
+					totalTools: allTools.length,
+					connectedServers: mcpClients.size,
+					timestamp: new Date().toISOString(),
+				},
+				200,
+				req.requestId
+			);
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			logger.error('Failed to get all MCP tools', {
+				requestId: req.requestId,
+				error: errorMsg,
+			});
+
+			errorResponse(
+				res,
+				ERROR_CODES.MCP_SERVER_ERROR,
+				`Failed to get MCP tools: ${errorMsg}`,
+				500,
+				undefined,
+				req.requestId
+			);
+		}
+	});
+
+	/**
 	 * GET /api/mcp/servers
 	 * List all connected and failed MCP servers
 	 */
@@ -20,30 +86,21 @@ export function createMcpRoutes(agent: MemAgent): Router {
 		try {
 			logger.info('Listing MCP servers', { requestId: req.requestId });
 
-			const clients = agent.getMcpClients();
-			const failedConnections = agent.getMcpFailedConnections();
+			// Use the new comprehensive method that includes all server data
+			const allServers = agent.getAllMcpServers();
 
-			const connectedServers = Array.from(clients.entries()).map(([name, _client]) => ({
-				name,
-				status: 'connected',
-				// You could add more client metadata here if available
-				connected: true,
-			}));
-
-			const failedServers = Object.entries(failedConnections).map(([name, error]) => ({
-				name,
-				status: 'failed',
-				error,
-				connected: false,
-			}));
+			const connectedCount = allServers.filter(
+				(s: { status: string }) => s.status === 'connected'
+			).length;
+			const failedCount = allServers.filter((s: { status: string }) => s.status === 'error').length;
 
 			successResponse(
 				res,
 				{
-					connected: connectedServers,
-					failed: failedServers,
-					totalConnected: connectedServers.length,
-					totalFailed: failedServers.length,
+					servers: allServers,
+					totalConnected: connectedCount,
+					totalFailed: failedCount,
+					totalServers: allServers.length,
 				},
 				200,
 				req.requestId
@@ -72,12 +129,32 @@ export function createMcpRoutes(agent: MemAgent): Router {
 	 */
 	router.post('/servers', validateMcpServerConfig, async (req: Request, res: Response) => {
 		try {
-			const { name, ...config } = req.body;
+			const { name, transport, command, args, url, env, headers, timeout, connectionMode } =
+				req.body;
 
 			logger.info('Connecting MCP server', {
 				requestId: req.requestId,
 				serverName: name,
+				serverType: transport,
 			});
+
+			// Construct proper MCP server config based on transport type
+			let config: any = {
+				type: transport, // Map transport back to type for MCP config
+				timeout: timeout || 30000,
+				connectionMode: connectionMode || 'lenient',
+				enabled: true,
+			};
+
+			// Add type-specific fields
+			if (transport === 'stdio') {
+				config.command = command;
+				config.args = args || [];
+				config.env = env || {};
+			} else if (transport === 'sse' || transport === 'streamable-http') {
+				config.url = url;
+				config.headers = headers || {};
+			}
 
 			await agent.connectMcpServer(name, config);
 

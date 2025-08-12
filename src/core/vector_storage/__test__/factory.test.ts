@@ -155,7 +155,7 @@ describe('Vector Storage Factory', () => {
 
 			const info = result.manager.getInfo();
 			expect(info.backend.type).toBe('in-memory');
-			expect(info.backend.collectionName).toBe('default');
+			expect(info.backend.collectionName).toBe('knowledge_memory');
 			expect(info.backend.dimension).toBe(1536);
 			expect(info.backend.fallback).toBe(false);
 
@@ -196,7 +196,7 @@ describe('Vector Storage Factory', () => {
 
 			const info = result.manager.getInfo();
 			expect(info.backend.type).toBe('in-memory');
-			expect(info.backend.collectionName).toBe('default');
+			expect(info.backend.collectionName).toBe('knowledge_memory');
 			expect(info.backend.dimension).toBe(1536);
 
 			// Cleanup
@@ -324,7 +324,7 @@ describe('Vector Storage Factory', () => {
 			const config = getVectorStoreConfigFromEnv();
 
 			expect(config.type).toBe('in-memory');
-			expect(config.collectionName).toBe('default');
+			expect(config.collectionName).toBe('knowledge_memory');
 			expect(config.dimension).toBe(1536);
 			expect((config as any).maxVectors).toBe(10000);
 		});

@@ -125,6 +125,7 @@ export async function createDefaultStorage(): Promise<StorageFactory> {
  * - STORAGE_CACHE_TYPE: Cache backend type (redis, in-memory)
  * - STORAGE_CACHE_HOST: Redis host (if using Redis)
  * - STORAGE_CACHE_PORT: Redis port (if using Redis)
+ * - STORAGE_CACHE_USERNAME: Redis username (if using Redis)
  * - STORAGE_CACHE_PASSWORD: Redis password (if using Redis)
  * - STORAGE_DATABASE_TYPE: Database backend type (sqlite, in-memory)
  * - STORAGE_DATABASE_PATH: SQLite database path (if using SQLite)
@@ -155,6 +156,7 @@ export async function createStorageFromEnv(): Promise<StorageFactory> {
 			type: 'redis',
 			host: env.STORAGE_CACHE_HOST || 'localhost',
 			port: port,
+			username: env.STORAGE_CACHE_USERNAME,
 			password: env.STORAGE_CACHE_PASSWORD,
 			database: database,
 		};

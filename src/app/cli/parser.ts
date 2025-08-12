@@ -342,99 +342,6 @@ export class CommandParser {
 			},
 		});
 
-		// Load history command
-		this.registerCommand({
-			name: 'load-history',
-			description: 'Load conversation history for current session',
-			category: 'session',
-			handler: async (args: string[], agent: MemAgent) => {
-				try {
-					const currentSessionId = agent.getCurrentSessionId();
-					console.log(
-						chalk.cyan(`🔄 Loading conversation history for session: ${currentSessionId}`)
-					);
-
-					await agent.loadSessionHistory(currentSessionId);
-
-					// Show the loaded history
-					const history = await agent.getCurrentSessionHistory();
-					console.log(
-						chalk.green(
-							`✅ Successfully loaded ${history.length} messages from conversation history`
-						)
-					);
-
-					if (history.length > 0) {
-						console.log(chalk.gray('Recent messages:'));
-						history.slice(-3).forEach((msg, index) => {
-							const role = msg.role || 'unknown';
-							const content =
-								typeof msg.content === 'string'
-									? msg.content.substring(0, 80) + (msg.content.length > 80 ? '...' : '')
-									: JSON.stringify(msg.content).substring(0, 80) + '...';
-							console.log(chalk.gray(`  ${history.length - 3 + index + 1}. [${role}] ${content}`));
-						});
-					}
-
-					return true;
-				} catch (error) {
-					console.log(
-						chalk.red(
-							`❌ Failed to load conversation history: ${error instanceof Error ? error.message : String(error)}`
-						)
-					);
-					return false;
-				}
-			},
-		});
-
-		// Debug command
-		this.registerCommand({
-			name: 'debug',
-			description: 'Show debug information for current session',
-			category: 'system',
-			handler: async (args: string[], agent: MemAgent) => {
-				try {
-					const currentSessionId = agent.getCurrentSessionId();
-					console.log(chalk.cyan('🔍 Debug Information:'));
-					console.log(chalk.gray(`Current Session: ${currentSessionId}`));
-
-					// Get session metadata
-					const metadata = await agent.getSessionMetadata(currentSessionId);
-					if (metadata) {
-						console.log(chalk.gray(`Message Count: ${metadata.messageCount}`));
-					}
-
-					// Get conversation history
-					const history = await agent.getCurrentSessionHistory();
-					console.log(chalk.gray(`History Length: ${history.length}`));
-
-					if (history.length > 0) {
-						console.log(chalk.gray('Recent Messages:'));
-						history.slice(-5).forEach((msg, index) => {
-							const role = msg.role || 'unknown';
-							const content =
-								typeof msg.content === 'string'
-									? msg.content.substring(0, 100) + (msg.content.length > 100 ? '...' : '')
-									: JSON.stringify(msg.content).substring(0, 100) + '...';
-							console.log(chalk.gray(`  ${history.length - 5 + index + 1}. [${role}] ${content}`));
-						});
-					} else {
-						console.log(chalk.gray('  No conversation history found'));
-					}
-
-					return true;
-				} catch (error) {
-					console.log(
-						chalk.red(
-							`❌ Failed to get debug info: ${error instanceof Error ? error.message : String(error)}`
-						)
-					);
-					return false;
-				}
-			},
-		});
-
 		// Clear/Reset command
 		this.registerCommand({
 			name: 'clear',
@@ -799,12 +706,10 @@ export class CommandParser {
 					case 'delete':
 					case 'del':
 					case 'remove':
+						if (subArgs.length > 0 && subArgs[0] === 'all') {
+							return this.sessionDeleteAllHandler(subArgs.slice(1), agent);
+						}
 						return this.sessionDeleteHandler(subArgs, agent);
-					case 'save':
-						return this.sessionSaveHandler(subArgs, agent);
-					case 'load':
-					case 'restore':
-						return this.sessionLoadHandler(subArgs, agent);
 					case 'help':
 					case 'h':
 						return this.sessionHelpHandler(subArgs, agent);
@@ -1131,8 +1036,6 @@ export class CommandParser {
 								}
 							}
 							await enhanced.addOrUpdateProvider(newConfig);
-							// Fetch the new provider instance after update
-							// const updatedProvider = enhanced.getProvider(name);
 							// If summarize flag is set to true for file-based provider, trigger LLM summarization immediately
 							if (summarizeFlag && typeof name === 'string') {
 								const updatedProvider = enhanced.getProvider(name);
@@ -1499,21 +1402,6 @@ export class CommandParser {
 
 			// Auto-switch to new session
 			await agent.loadSession(session.id);
-
-			// Wait for background initialization to complete based on log level
-			// This prevents the CLI prompt from appearing before services are ready
-			const currentLogLevel = process.env.CIPHER_LOG_LEVEL || 'info';
-			const isDebugLevel = ['debug', 'trace'].includes(currentLogLevel);
-
-			if (isDebugLevel) {
-				// At debug level, wait longer for background operations to complete
-				// This ensures all initialization logs are written before showing the prompt
-				await new Promise(resolve => setTimeout(resolve, 500));
-			} else {
-				// At info level or higher, wait a shorter time
-				await new Promise(resolve => setTimeout(resolve, 200));
-			}
-
 			console.log(chalk.blue('🔄 Switched to new session'));
 
 			return true;
@@ -1544,22 +1432,7 @@ export class CommandParser {
 				return false;
 			}
 
-			// Load the session and wait for it to complete
 			await agent.loadSession(sessionId);
-
-			// Wait for background initialization to complete based on log level
-			// This prevents the CLI prompt from appearing before services are ready
-			const currentLogLevel = process.env.CIPHER_LOG_LEVEL || 'info';
-			const isDebugLevel = ['debug', 'trace'].includes(currentLogLevel);
-
-			if (isDebugLevel) {
-				// At debug level, wait longer for background operations to complete
-				// This ensures all initialization logs are written before showing the prompt
-				await new Promise(resolve => setTimeout(resolve, 500));
-			} else {
-				// At info level or higher, wait a shorter time
-				await new Promise(resolve => setTimeout(resolve, 200));
-			}
 
 			const metadata = await agent.getSessionMetadata(sessionId);
 			console.log(chalk.green(`✅ Switched to session: ${sessionId}`));
@@ -1650,72 +1523,74 @@ export class CommandParser {
 	}
 
 	/**
-	 * Session save subcommand handler
+	 * Session delete all subcommand handler
 	 */
-	private async sessionSaveHandler(_args: string[], agent: MemAgent): Promise<boolean> {
+	private async sessionDeleteAllHandler(args: string[], agent: MemAgent): Promise<boolean> {
 		try {
-			console.log(chalk.cyan('💾 Saving all sessions to persistent storage...'));
+			const currentSessionId = agent.getCurrentSessionId();
+			const allSessionIds = await agent.listSessions();
 
-			const result = await agent.saveAllSessions();
-
-			console.log('');
-			if (result.saved > 0) {
-				console.log(chalk.green(`✅ Successfully saved ${result.saved} session(s)`));
+			if (allSessionIds.length === 0) {
+				console.log(chalk.yellow('⚠️  No sessions to delete'));
+				return true;
 			}
 
-			if (result.failed > 0) {
-				console.log(chalk.yellow(`⚠️  Failed to save ${result.failed} session(s)`));
+			// Filter out the current active session
+			const sessionsToDelete = allSessionIds.filter(sessionId => sessionId !== currentSessionId);
+
+			if (sessionsToDelete.length === 0) {
+				console.log(chalk.yellow('⚠️  Only the active session exists, nothing to delete'));
+				console.log(chalk.gray('   The active session cannot be deleted'));
+				return true;
 			}
 
-			if (result.total === 0) {
-				console.log(chalk.gray('📭 No active sessions to save'));
-			}
-
-			console.log(chalk.gray(`📊 Total: ${result.total} sessions processed`));
-			console.log('');
-
-			return true;
-		} catch (error) {
 			console.log(
-				chalk.red(
-					`❌ Failed to save sessions: ${error instanceof Error ? error.message : String(error)}`
+				chalk.yellow(
+					`🗑️  About to delete ${sessionsToDelete.length} sessions (excluding active session)`
 				)
 			);
-			return false;
-		}
-	}
+			console.log(chalk.gray(`   Active session "${currentSessionId}" will be preserved`));
+			console.log('');
 
-	/**
-	 * Session load subcommand handler
-	 */
-	private async sessionLoadHandler(_args: string[], agent: MemAgent): Promise<boolean> {
-		try {
-			console.log(chalk.cyan('📂 Loading sessions from persistent storage...'));
+			let deletedCount = 0;
+			let failedCount = 0;
+			const failedSessions: string[] = [];
 
-			const result = await agent.loadAllSessions();
+			for (const sessionId of sessionsToDelete) {
+				try {
+					await agent.removeSession(sessionId);
+					deletedCount++;
+					console.log(chalk.green(`✅ Deleted session: ${sessionId}`));
+				} catch (error) {
+					failedCount++;
+					failedSessions.push(sessionId);
+					console.log(
+						chalk.red(
+							`❌ Failed to delete session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`
+						)
+					);
+				}
+			}
 
 			console.log('');
-			if (result.restored > 0) {
-				console.log(chalk.green(`✅ Successfully restored ${result.restored} session(s)`));
-			}
+			console.log(chalk.cyan('📊 Summary:'));
+			console.log(`  ${chalk.green('Deleted:')} ${deletedCount} sessions`);
+			console.log(`  ${chalk.red('Failed:')} ${failedCount} sessions`);
+			console.log(`  ${chalk.blue('Remaining:')} 1 active session`);
 
-			if (result.failed > 0) {
-				console.log(chalk.yellow(`⚠️  Failed to restore ${result.failed} session(s)`));
+			if (failedSessions.length > 0) {
+				console.log('');
+				console.log(chalk.yellow('⚠️  Failed to delete sessions:'));
+				failedSessions.forEach(sessionId => {
+					console.log(`  - ${sessionId}`);
+				});
 			}
-
-			if (result.total === 0) {
-				console.log(chalk.gray('📭 No sessions found in storage'));
-			}
-
-			console.log(chalk.gray(`📊 Total: ${result.total} sessions found in storage`));
-			console.log('');
-			console.log(chalk.gray('💡 Use /session list to see all active sessions'));
 
 			return true;
 		} catch (error) {
 			console.log(
 				chalk.red(
-					`❌ Failed to load sessions: ${error instanceof Error ? error.message : String(error)}`
+					`❌ Failed to delete sessions: ${error instanceof Error ? error.message : String(error)}`
 				)
 			);
 			return false;
@@ -1736,8 +1611,7 @@ export class CommandParser {
 			'/session switch <id> - Switch to different session',
 			'/session current - Show current session info',
 			'/session delete <id> - Delete session (cannot delete active)',
-			'/session save - Manually save all sessions to persistent storage',
-			'/session load - Manually load sessions from persistent storage',
+			'/session delete all - Delete all sessions except the active one',
 			'/session help - Show this help message',
 		];
 
@@ -1806,7 +1680,7 @@ export class CommandParser {
 				return false;
 			}
 
-			// const providerName = args[0];
+			// const _providerName = args[0]; // Not used in this implementation
 
 			console.log(chalk.yellow('⚠️ Enhanced Prompt System Active'));
 			console.log('');
@@ -1844,7 +1718,7 @@ export class CommandParser {
 				return false;
 			}
 
-			// const providerName = args[0];
+			// const _providerName = args[0]; // Not used in this implementation
 
 			console.log(chalk.yellow('⚠️ Enhanced Prompt System Active'));
 			console.log('');

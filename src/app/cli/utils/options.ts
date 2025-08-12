@@ -6,15 +6,25 @@ export function validateCliOptions(opts: any): void {
 	const cliOptionShape = z.object({
 		verbose: z.boolean().optional().default(true),
 		mode: z
-			.enum(['cli', 'mcp', 'api'], {
-				errorMap: () => ({ message: 'Mode must be either cli, mcp, or api' }),
+			.enum(['cli', 'mcp', 'api', 'ui'], {
+				errorMap: () => ({ message: 'Mode must be either cli, mcp, api, or ui' }),
 			})
 			.optional()
 			.default('cli'),
 		strict: z.boolean().optional().default(false),
 		newSession: z.union([z.boolean(), z.string()]).optional(),
 		port: z.string().optional(),
+		uiPort: z.string().optional(),
 		host: z.string().optional(),
+		mcpTransportType: z
+			.enum(['stdio', 'sse', 'streamable-http'], {
+				errorMap: () => ({ message: 'MCP transport type must be stdio, sse, or streamable-http' }),
+			})
+			.optional()
+			.default('stdio'),
+		mcpPort: z.string().optional(),
+		mcpHost: z.string().optional(),
+		mcpDnsRebindingProtection: z.boolean().optional(),
 	});
 
 	const cliOptionSchema = cliOptionShape;
@@ -25,7 +35,12 @@ export function validateCliOptions(opts: any): void {
 		strict: opts.strict,
 		newSession: opts.newSession,
 		port: opts.port,
+		uiPort: opts.uiPort,
 		host: opts.host,
+		mcpTransportType: opts.mcpTransportType,
+		mcpPort: opts.mcpPort,
+		mcpHost: opts.mcpHost,
+		mcpDnsRebindingProtection: opts.mcpDnsRebindingProtection,
 	});
 
 	if (!result.success) {

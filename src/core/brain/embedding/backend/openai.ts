@@ -45,14 +45,34 @@ export class OpenAIEmbedder implements Embedder {
 		this.config = config;
 		this.model = config.model || 'text-embedding-3-small';
 
-		// Initialize OpenAI client
-		this.openai = new OpenAI({
+		// Validate that API key is provided
+		if (!config.apiKey || config.apiKey.trim() === '') {
+			throw new EmbeddingError('OpenAI API key is required', 'openai');
+		}
+
+		// Initialize OpenAI client with proper handling of undefined values
+		// Only pass defined values to avoid OpenAI SDK initialization issues
+		const openaiConfig: {
+			apiKey: string;
+			baseURL?: string;
+			organization?: string;
+			timeout: number;
+			maxRetries: number;
+		} = {
 			apiKey: config.apiKey,
-			baseURL: config.baseUrl,
-			organization: config.organization,
-			timeout: config.timeout,
-			maxRetries: config.maxRetries,
-		});
+			timeout: config.timeout || 30000, // Default to 30 seconds if not specified
+			maxRetries: config.maxRetries || 3, // Default to 3 retries if not specified
+		};
+
+		// Only add optional fields if they are defined and not empty
+		if (config.baseUrl && config.baseUrl.trim() !== '') {
+			openaiConfig.baseURL = config.baseUrl;
+		}
+		if (config.organization && config.organization.trim() !== '') {
+			openaiConfig.organization = config.organization;
+		}
+
+		this.openai = new OpenAI(openaiConfig);
 
 		// Set dimension based on model and config
 		this.dimension =

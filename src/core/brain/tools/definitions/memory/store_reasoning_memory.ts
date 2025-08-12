@@ -270,7 +270,12 @@ export const storeReasoningMemoryTool: InternalTool = {
 			// Check if should store based on evaluation
 			if (evaluation.shouldStore === false) {
 				logger.debug(
-					'StoreReasoningMemory: Skipping storage - evaluation indicates should not store'
+					'StoreReasoningMemory: Skipping storage - evaluation indicates should not store',
+					{
+						success: true,
+						qualityScore: evaluation.qualityScore,
+						shouldStore: evaluation.shouldStore,
+					}
 				);
 				return {
 					success: true,
@@ -724,7 +729,7 @@ export const storeReasoningMemoryTool: InternalTool = {
 					payloads: `[Object with ${Object.keys(payload).length} keys]`,
 				},
 			});
-
+			// console.log('Store Reasoning Memory Payload:', payload);
 			// Store in reflection vector database using exact same pattern as successful function
 			try {
 				await reflectionStore.insert([embedding], [vectorId], [payload]);

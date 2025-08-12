@@ -6,6 +6,9 @@ import { UnifiedToolManager } from '../../tools/unified-tool-manager.js';
 import { ContextManager } from '../messages/manager.js';
 import { logger } from '../../../logger/index.js';
 import { formatToolResult } from '../utils/tool-result-formatter.js';
+import { EventManager } from '../../../events/event-manager.js';
+import { SessionEvents } from '../../../events/event-types.js';
+import { v4 as uuidv4 } from 'uuid';
 
 export class GeminiService implements ILLMService {
 	private genAI: GoogleGenerativeAI;
@@ -15,6 +18,7 @@ export class GeminiService implements ILLMService {
 	private contextManager: ContextManager;
 	private maxIterations: number;
 	private unifiedToolManager: UnifiedToolManager | null = null;
+	private eventManager?: EventManager;
 
 	constructor(
 		apiKey: string,
@@ -48,8 +52,28 @@ export class GeminiService implements ILLMService {
 		}
 	}
 
+	setEventManager(eventManager: EventManager): void {
+		this.eventManager = eventManager;
+	}
+
 	async generate(userInput: string, imageData?: ImageData, _stream?: boolean): Promise<string> {
 		await this.contextManager.addUserMessage(userInput, imageData);
+
+		const messageId = uuidv4();
+		const startTime = Date.now();
+
+		// Try to get sessionId from contextManager if available, otherwise undefined
+		const sessionId = (this.contextManager as any)?.sessionId;
+
+		// Emit LLM response started event
+		if (this.eventManager && sessionId) {
+			this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_RESPONSE_STARTED, {
+				sessionId,
+				messageId,
+				model: this.modelName,
+				timestamp: startTime,
+			});
+		}
 
 		// Use unified tool manager if available, otherwise fall back to MCP manager
 		let formattedTools: any[];
@@ -91,12 +115,34 @@ export class GeminiService implements ILLMService {
 					const responseText = message.content || '';
 					// Add assistant message to history
 					await this.contextManager.addAssistantMessage(responseText);
+
+					// Emit LLM response completed event
+					if (this.eventManager && sessionId) {
+						this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_RESPONSE_COMPLETED, {
+							sessionId,
+							messageId,
+							model: this.modelName,
+							duration: Date.now() - startTime,
+							timestamp: Date.now(),
+							response: responseText,
+						});
+					}
+
 					return responseText;
 				}
 
 				// Log thinking steps when assistant provides reasoning before tool calls
 				if (message.content && message.content.trim()) {
 					logger.info(`💭 ${message.content.trim()}`);
+
+					// Emit thinking event
+					if (this.eventManager && sessionId) {
+						this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_THINKING, {
+							sessionId,
+							messageId,
+							timestamp: Date.now(),
+						});
+					}
 				}
 
 				// Add assistant message with tool calls to history
@@ -123,7 +169,7 @@ export class GeminiService implements ILLMService {
 					try {
 						let result: any;
 						if (this.unifiedToolManager) {
-							result = await this.unifiedToolManager.executeTool(toolName, args);
+							result = await this.unifiedToolManager.executeTool(toolName, args, sessionId);
 						} else {
 							result = await this.mcpManager.executeTool(toolName, args);
 						}

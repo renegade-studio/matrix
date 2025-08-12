@@ -84,6 +84,7 @@ export class VectorStoreManager {
 	private static qdrantModule?: any;
 	private static inMemoryModule?: any;
 	private static milvusModule?: any;
+	private static chromaModule?: any;
 
 	// In VectorStoreManager, track if in-memory is used as fallback or primary
 	private usedFallback = false;
@@ -485,6 +486,28 @@ export class VectorStoreManager {
 					return new MilvusBackend(config);
 				} catch (error) {
 					this.logger.info(`${LOG_PREFIXES.MANAGER} Failed to create Milvus backend: ${error}`, {
+						error: error instanceof Error ? error.message : String(error),
+					});
+					throw error; // Let connection handler deal with fallback
+				}
+			}
+
+			case BACKEND_TYPES.CHROMA: {
+				try {
+					// Lazy load ChromaDB module (shared across all instances)
+					if (!VectorStoreManager.chromaModule) {
+						this.logger.debug(`${LOG_PREFIXES.MANAGER} Lazy loading ChromaDB module`);
+						const { ChromaBackend } = await import('./backend/chroma.js');
+						VectorStoreManager.chromaModule = ChromaBackend;
+					}
+
+					const ChromaBackend = VectorStoreManager.chromaModule;
+					this.backendMetadata.type = BACKEND_TYPES.CHROMA;
+					this.backendMetadata.isFallback = false;
+
+					return new ChromaBackend(config);
+				} catch (error) {
+					this.logger.info(`${LOG_PREFIXES.MANAGER} Failed to create ChromaDB backend: ${error}`, {
 						error: error instanceof Error ? error.message : String(error),
 					});
 					throw error; // Let connection handler deal with fallback

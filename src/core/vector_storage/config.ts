@@ -11,6 +11,8 @@
  * Supported backends:
  * - In-Memory: Fast local storage for development/testing
  * - Qdrant: High-performance vector similarity search engine
+ * - Milvus: Open-source vector database with horizontal scaling
+ * - ChromaDB: Developer-friendly open-source embedding database
  * - Pinecone: Managed vector database service (planned)
  * - Weaviate: Open-source vector search engine (planned)
  *
@@ -177,6 +179,64 @@ const MilvusBackendSchema = BaseVectorStoreSchema.extend({
 export type MilvusBackendConfig = z.infer<typeof MilvusBackendSchema>;
 
 /**
+ * ChromaDB Backend Configuration
+ *
+ * Configuration for ChromaDB vector database backend.
+ * Supports both HTTP client connection and embedded mode.
+ *
+ * @example
+ * ```typescript
+ * // Using connection URL
+ * const config: ChromaBackendConfig = {
+ *   type: 'chroma',
+ *   url: 'http://localhost:8000',
+ *   collectionName: 'documents',
+ *   dimension: 1536
+ * };
+ *
+ * // Using individual parameters
+ * const config: ChromaBackendConfig = {
+ *   type: 'chroma',
+ *   host: 'localhost',
+ *   port: 8000,
+ *   collectionName: 'documents',
+ *   dimension: 1536,
+ *   headers: { 'Authorization': 'Bearer token' }
+ * };
+ * ```
+ */
+const ChromaBackendSchema = BaseVectorStoreSchema.extend({
+	type: z.literal('chroma'),
+
+	/** ChromaDB connection URL (http://...) - overrides individual params if provided */
+	url: z.string().url().optional().describe('ChromaDB connection URL'),
+
+	/** ChromaDB server hostname */
+	host: z.string().optional().describe('ChromaDB host'),
+
+	/** ChromaDB HTTP port (default: 8000) */
+	port: z.number().int().positive().default(8000).optional().describe('ChromaDB port'),
+
+	/** Use SSL/TLS for connection (default: false) */
+	ssl: z.boolean().default(false).optional().describe('Use SSL/TLS for connection'),
+
+	/** Custom HTTP headers for authentication */
+	headers: z.record(z.string()).optional().describe('Custom HTTP headers'),
+
+	/** Distance metric for similarity search */
+	distance: z
+		.enum(['cosine', 'l2', 'euclidean', 'ip', 'dot'] as const)
+		.default('cosine')
+		.optional()
+		.describe('Distance metric'),
+
+	/** Custom path for ChromaDB API endpoints */
+	path: z.string().optional().describe('Custom API path'),
+}).strict();
+
+export type ChromaBackendConfig = z.infer<typeof ChromaBackendSchema>;
+
+/**
  * Backend Configuration Union Schema
  *
  * Discriminated union of all supported backend configurations.
@@ -185,16 +245,20 @@ export type MilvusBackendConfig = z.infer<typeof MilvusBackendSchema>;
  * Includes custom validation to ensure backends have required connection info.
  */
 const BackendConfigSchema = z
-	.discriminatedUnion('type', [InMemoryBackendSchema, QdrantBackendSchema, MilvusBackendSchema], {
-		errorMap: (issue, ctx) => {
-			if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
-				return {
-					message: `Invalid backend type. Expected 'in-memory', 'qdrant', or 'milvus'.`,
-				};
-			}
-			return { message: ctx.defaultError };
-		},
-	})
+	.discriminatedUnion(
+		'type',
+		[InMemoryBackendSchema, QdrantBackendSchema, MilvusBackendSchema, ChromaBackendSchema],
+		{
+			errorMap: (issue, ctx) => {
+				if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
+					return {
+						message: `Invalid backend type. Expected 'in-memory', 'qdrant', 'milvus', or 'chroma'.`,
+					};
+				}
+				return { message: ctx.defaultError };
+			},
+		}
+	)
 	.describe('Backend configuration for vector storage system')
 	.superRefine((data, ctx) => {
 		// Validate Qdrant backend requirements
@@ -214,6 +278,17 @@ const BackendConfigSchema = z
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message: "Milvus backend requires either 'url' or 'host' to be specified",
+					path: ['url'],
+				});
+			}
+		}
+		// Validate ChromaDB backend requirements
+		if (data.type === 'chroma') {
+			// ChromaDB requires either a connection URL or a host
+			if (!data.url && !data.host) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "ChromaDB backend requires either 'url' or 'host' to be specified",
 					path: ['url'],
 				});
 			}

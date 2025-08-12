@@ -118,17 +118,8 @@ export class MemAgent {
 				services: services,
 			});
 
-			// Load persisted sessions on startup for all modes
-			try {
-				logger.debug('Loading persisted sessions...');
-				const stats = await this.sessionManager.loadAllSessions();
-				if (stats.restoredSessions > 0) {
-					logger.info(`Restored ${stats.restoredSessions} sessions from persistent storage`);
-				}
-			} catch (error) {
-				logger.warn('Failed to load persisted sessions on startup:', error);
-				// Continue startup even if session loading fails
-			}
+			// Sessions are already loaded during SessionManager initialization
+			// No need to load them again here
 
 			this.isStarted = true;
 			if (this.appMode !== 'cli') {
@@ -375,7 +366,7 @@ export class MemAgent {
 	}
 
 	/**
-	 * Get session metadata including creation time and activity
+	 * Get session metadata including message count
 	 */
 	public async getSessionMetadata(sessionId: string): Promise<{
 		id: string;
@@ -394,10 +385,28 @@ export class MemAgent {
 		// Get actual message count from the session
 		let messageCount = 0;
 		try {
+			// Ensure the session is properly initialized
+			if (!session.getContextManager) {
+				await session.init();
+			}
+
 			const history = await session.getConversationHistory();
 			messageCount = history.length;
 		} catch (error) {
 			logger.warn(`Failed to get message count for session ${sessionId}:`, error);
+			// Try alternative method to get message count
+			try {
+				const contextManager = session.getContextManager();
+				if (contextManager) {
+					const rawMessages = contextManager.getRawMessages();
+					messageCount = rawMessages.length;
+				}
+			} catch (fallbackError) {
+				logger.warn(
+					`Failed to get message count via fallback for session ${sessionId}:`,
+					fallbackError
+				);
+			}
 		}
 
 		// For now, return basic metadata since SessionManager doesn't expose internal metadata
@@ -514,6 +523,45 @@ export class MemAgent {
 	public getMcpFailedConnections(): Record<string, string> {
 		this.ensureStarted();
 		return this.mcpManager.getFailedConnections();
+	}
+
+	public getAllMcpServers(): Array<{ id: string; name: string; status: string; error?: string }> {
+		this.ensureStarted();
+		const clients = this.mcpManager.getClients();
+		const failedConnections = this.mcpManager.getFailedConnections();
+
+		const servers: Array<{ id: string; name: string; status: string; error?: string }> = [];
+
+		// Add connected servers
+		for (const [name, client] of clients.entries()) {
+			try {
+				client.getServerInfo(); // Get server info but don't use it
+				servers.push({
+					id: name, // Use client name as id for API compatibility
+					name,
+					status: 'connected',
+				});
+			} catch (error) {
+				servers.push({
+					id: name, // Use client name as id for API compatibility
+					name,
+					status: 'error',
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
+		// Add failed connections
+		for (const [name, error] of Object.entries(failedConnections)) {
+			servers.push({
+				id: name, // Use client name as id for API compatibility
+				name,
+				status: 'error',
+				error,
+			});
+		}
+
+		return servers;
 	}
 
 	public getEffectiveConfig(sessionId?: string): Readonly<AgentConfig> {

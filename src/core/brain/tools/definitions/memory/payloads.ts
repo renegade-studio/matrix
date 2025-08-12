@@ -10,6 +10,10 @@ export interface BasePayload {
 	text: string;
 	timestamp: string;
 	version: 2; // Always V2 after cleanup
+	// Cross-tool sharing identifiers
+	userId?: string;
+	projectId?: string;
+	workspaceMode?: 'shared' | 'isolated';
 }
 
 /**
@@ -18,7 +22,6 @@ export interface BasePayload {
 export interface KnowledgePayload extends BasePayload {
 	tags: string[];
 	confidence: number;
-	reasoning: string;
 	event: 'ADD' | 'UPDATE' | 'DELETE' | 'NONE';
 	// Enhanced V2 fields
 	domain?: string;
@@ -68,7 +71,6 @@ export function createKnowledgePayload(
 	text: string,
 	tags: string[],
 	confidence: number,
-	reasoning: string,
 	event: 'ADD' | 'UPDATE' | 'DELETE' | 'NONE',
 	options: {
 		domain?: string;
@@ -76,14 +78,19 @@ export function createKnowledgePayload(
 		qualitySource: 'similarity' | 'llm' | 'heuristic';
 		code_pattern?: string;
 		old_memory?: string;
+		userId?: string;
+		projectId?: string;
+		workspaceMode?: 'shared' | 'isolated';
 	}
 ): KnowledgePayload {
+	// Import env here to avoid circular dependencies
+	const { env } = require('../../../../env.js');
+
 	return {
 		id,
 		text,
 		tags,
 		confidence,
-		reasoning,
 		event,
 		timestamp: new Date().toISOString(),
 		version: 2,
@@ -92,6 +99,62 @@ export function createKnowledgePayload(
 		qualitySource: options.qualitySource,
 		...(options.code_pattern && { code_pattern: options.code_pattern }),
 		...(options.old_memory && { old_memory: options.old_memory }),
+		// Add cross-tool sharing identifiers (env vars take precedence for security)
+		userId: env.CIPHER_USER_ID || options.userId,
+		projectId: env.CIPHER_PROJECT_NAME || options.projectId,
+		workspaceMode: env.CIPHER_WORKSPACE_MODE || options.workspaceMode || 'isolated',
+	};
+}
+
+/**
+ * Extract knowledge-relevant information from text
+ * Minimal fallback parser to avoid storing trivial/noisy data
+ */
+export function extractKnowledgeInfo(text: string): {
+	domain?: string;
+	codePattern?: string;
+} {
+	const result: { domain?: string; codePattern?: string } = {};
+
+	if (!text || typeof text !== 'string') return result;
+
+	// Extract first fenced code block as canonical code pattern
+	const fenceMatch = text.match(/```[a-zA-Z0-9]*\n([\s\S]*?)```/);
+	if (fenceMatch && fenceMatch[1]) {
+		const snippet = fenceMatch[1].trim();
+		if (snippet.length > 0 && snippet.length <= 4000) {
+			result.codePattern = snippet;
+		}
+	}
+
+	// Very light domain hinting (kept minimal to avoid noise)
+	const lower = text.toLowerCase();
+	if (/\b(react|vue|angular|frontend|ui|css|html|typescript|javascript)\b/.test(lower)) {
+		result.domain = 'frontend';
+	} else if (/\b(node|express|api|backend|django|flask|rails|spring)\b/.test(lower)) {
+		result.domain = 'backend';
+	} else if (/\b(docker|kubernetes|ci|cd|pipeline|devops|infrastructure)\b/.test(lower)) {
+		result.domain = 'devops';
+	}
+
+	return result;
+}
+
+/**
+ * Merge LLM-provided knowledge info with extracted info
+ * LLM/agent-provided data takes precedence, extraction fills gaps
+ */
+export function mergeKnowledgeInfo(
+	llmProvided: Partial<{ domain?: string; codePattern?: string }> = {},
+	extracted: ReturnType<typeof extractKnowledgeInfo> = {}
+): { domain?: string; codePattern?: string } {
+	return {
+		...((llmProvided.domain || extracted.domain) && {
+			domain: llmProvided.domain || extracted.domain,
+		}),
+		...((llmProvided.codePattern || extracted.codePattern) && {
+			codePattern: llmProvided.codePattern || extracted.codePattern,
+		}),
 	};
 }
 
@@ -120,8 +183,14 @@ export function createReasoningPayload(
 	context: string,
 	options: {
 		sourceSessionId?: string;
+		userId?: string;
+		projectId?: string;
+		workspaceMode?: 'shared' | 'isolated';
 	} = {}
 ): ReasoningPayload {
+	// Import env here to avoid circular dependencies
+	const { env } = require('../../../../env.js');
+
 	// Compute derived metrics from raw data
 	const stepCount = reasoningSteps.length;
 	const stepTypes = Array.from(new Set(reasoningSteps.map(step => step.type)));
@@ -140,5 +209,9 @@ export function createReasoningPayload(
 		stepTypes,
 		issueCount,
 		...(options.sourceSessionId && { sourceSessionId: options.sourceSessionId }),
+		// Add cross-tool sharing identifiers (env vars take precedence for security)
+		userId: env.CIPHER_USER_ID || options.userId,
+		projectId: env.CIPHER_PROJECT_NAME || options.projectId,
+		workspaceMode: env.CIPHER_WORKSPACE_MODE || options.workspaceMode || 'isolated',
 	};
 }

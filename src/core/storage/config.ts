@@ -107,6 +107,9 @@ const RedisBackendSchema = BaseBackendSchema.extend({
 	/** Redis server port (default: 6379) */
 	port: z.number().int().positive().optional().describe('Redis port'),
 
+	/** Redis authentication username */
+	username: z.string().optional().describe('Redis username'),
+
 	/** Redis authentication password */
 	password: z.string().optional().describe('Redis password'),
 

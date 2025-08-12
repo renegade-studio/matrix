@@ -36,7 +36,7 @@ cipher --mode mcp --agent ./examples/03-strict-memory-layer/cipher.yml
         "VECTOR_STORE_PASSWORD": "...",
         "VECTOR_STORE_COLLECTION": "knowledge_memory",
         "REFLECTION_VECTOR_STORE_COLLECTION": "reflection_memory",
-        "DISABLE_REFLECTION_MEMORY": "false"
+        "DISABLE_REFLECTION_MEMORY": "true"  # default: true
       }
     }
   }

@@ -18,6 +18,7 @@ export const LOG_PREFIXES = {
 	INDEX: '[VectorStore:Index]',
 	QDRANT: '[VectorStore:Qdrant]',
 	MILVUS: '[VectorStore:Milvus]',
+	CHROMA: '[VectorStore:Chroma]',
 	MEMORY: '[VectorStore:Memory]',
 } as const;
 
@@ -92,6 +93,10 @@ export const DEFAULTS = {
 	QDRANT_PORT: 6333,
 	QDRANT_GRPC_PORT: 6334,
 	QDRANT_DISTANCE: 'Cosine' as const,
+
+	// ChromaDB defaults
+	CHROMA_PORT: 8000,
+	CHROMA_DISTANCE: 'cosine' as const,
 } as const;
 
 /**

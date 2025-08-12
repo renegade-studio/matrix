@@ -57,7 +57,18 @@ export class OllamaEmbedder implements Embedder {
 		this.model = config.model || 'nomic-embed-text';
 		this.timeout = config.timeout || 30000;
 		this.maxRetries = config.maxRetries || 3;
-		this.baseUrl = config.baseUrl || 'http://localhost:11434';
+
+		// Normalize base URL for Ollama embedding service
+		// Embeddings use /api/embeddings endpoint, so we need to remove /v1 suffix if present
+		let baseUrl = config.baseUrl || 'http://localhost:11434';
+		baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
+
+		// For Ollama embeddings, remove /v1 suffix if present since we use /api/embeddings endpoint
+		if (baseUrl.endsWith('/v1')) {
+			baseUrl = baseUrl.replace(/\/v1$/, '');
+		}
+
+		this.baseUrl = baseUrl;
 
 		// Get dimension from model constants or use default
 		this.dimension =

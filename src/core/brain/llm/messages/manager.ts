@@ -146,7 +146,10 @@ export class ContextManager {
 				formattedMessages.push({ role: 'system', content: prompt });
 			}
 
-			for (const msg of this.messages) {
+			// Validate message flow for OpenAI compatibility before formatting
+			const validatedMessages = this.validateAndRepairMessageFlow(this.messages);
+
+			for (const msg of validatedMessages) {
 				const formatted = this.formatter.format(msg, null);
 
 				if (Array.isArray(formatted)) {
@@ -157,7 +160,7 @@ export class ContextManager {
 			}
 
 			logger.debug(
-				`Formatted ${formattedMessages.length} messages from history of ${this.messages.length} messages`
+				`Formatted ${formattedMessages.length} messages from history of ${validatedMessages.length} messages`
 			);
 			return formattedMessages;
 		} catch (error) {
@@ -608,5 +611,86 @@ export class ContextManager {
 		if (this.compressionHistory.length > this.compressionConfig.maxCompressionHistory) {
 			this.compressionHistory.shift();
 		}
+	}
+
+	/**
+	 * Validates and repairs message flow to ensure OpenAI compatibility.
+	 * OpenAI requires that tool messages always follow assistant messages with tool_calls.
+	 * This method removes orphaned tool messages and warns about inconsistencies.
+	 */
+	private validateAndRepairMessageFlow(messages: InternalMessage[]): InternalMessage[] {
+		const repairedMessages: InternalMessage[] = [];
+		let lastAssistantWithToolCalls: InternalMessage | null = null;
+		let orphanedToolMessages = 0;
+
+		for (let i = 0; i < messages.length; i++) {
+			const message = messages[i];
+
+			// Skip undefined messages
+			if (!message) {
+				continue;
+			}
+
+			switch (message.role) {
+				case 'system':
+				case 'user':
+					// These are always valid, reset tool call tracking
+					repairedMessages.push(message);
+					lastAssistantWithToolCalls = null;
+					break;
+
+				case 'assistant':
+					repairedMessages.push(message);
+					// Track if this assistant message has tool calls
+					if (message.toolCalls && message.toolCalls.length > 0) {
+						lastAssistantWithToolCalls = message;
+					} else {
+						lastAssistantWithToolCalls = null;
+					}
+					break;
+
+				case 'tool':
+					// Tool messages must follow assistant messages with tool_calls
+					if (
+						lastAssistantWithToolCalls &&
+						this.isValidToolResponse(message, lastAssistantWithToolCalls)
+					) {
+						repairedMessages.push(message);
+					} else {
+						// Orphaned tool message - skip silently
+						orphanedToolMessages++;
+					}
+					break;
+
+				default:
+					// Unknown role, but include it anyway
+					repairedMessages.push(message);
+					break;
+			}
+		}
+
+		// Silently remove orphaned tool messages to maintain OpenAI compatibility
+		// No logging needed as this is expected behavior for conversation repair
+
+		return repairedMessages;
+	}
+
+	/**
+	 * Validates that a tool message is a valid response to the given assistant message.
+	 */
+	private isValidToolResponse(
+		toolMessage: InternalMessage,
+		assistantMessage: InternalMessage
+	): boolean {
+		if (!assistantMessage.toolCalls || assistantMessage.toolCalls.length === 0) {
+			return false;
+		}
+
+		// Check if the tool message's toolCallId matches any of the assistant's tool calls
+		const matchingToolCall = assistantMessage.toolCalls.find(
+			tc => tc.id === toolMessage.toolCallId
+		);
+
+		return !!matchingToolCall;
 	}
 }

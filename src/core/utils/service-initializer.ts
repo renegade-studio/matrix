@@ -19,6 +19,7 @@ import { getServiceCache, createServiceKey } from '../brain/memory/service-cache
 import {
 	createVectorStoreFromEnv,
 	createDualCollectionVectorStoreFromEnv,
+	createMultiCollectionVectorStoreFromEnv,
 } from '../vector_storage/factory.js';
 import { KnowledgeGraphManager } from '../knowledge_graph/manager.js';
 import { createKnowledgeGraphFromEnv } from '../knowledge_graph/factory.js';
@@ -423,8 +424,19 @@ export async function createAgentServices(
 						// API key not provided for explicit embedding config
 						embeddingResult = null;
 					} else {
+						// Create a clean config object similar to the fallback logic
+						const cleanEmbeddingConfig = {
+							type: embeddingConfig.type,
+							apiKey,
+							model: embeddingConfig.model || 'text-embedding-3-small',
+							baseUrl: embeddingConfig.baseUrl,
+							organization: embeddingConfig.organization,
+							timeout: embeddingConfig.timeout || 30000,
+							maxRetries: embeddingConfig.maxRetries || 3,
+							dimensions: embeddingConfig.dimensions,
+						};
 						embeddingResult = await embeddingManager.createEmbedderFromConfig(
-							embeddingConfig,
+							cleanEmbeddingConfig,
 							'default'
 						);
 					}
@@ -541,16 +553,38 @@ export async function createAgentServices(
 		logger.debug('Initializing vector storage manager...');
 	}
 
-	let vectorStoreManager: VectorStoreManager | DualCollectionVectorManager;
+	let vectorStoreManager: VectorStoreManager | DualCollectionVectorManager | any; // MultiCollectionVectorManager
 
 	try {
-		// Check if reflection memory is enabled to determine which manager to use
+		// Check workspace memory first, then reflection memory to determine which manager to use
+		const workspaceEnabled = !!env.USE_WORKSPACE_MEMORY;
 		const reflectionEnabled =
 			!env.DISABLE_REFLECTION_MEMORY &&
 			env.REFLECTION_VECTOR_STORE_COLLECTION &&
 			env.REFLECTION_VECTOR_STORE_COLLECTION.trim() !== '';
 
-		if (reflectionEnabled) {
+		if (workspaceEnabled) {
+			logger.debug('Workspace memory enabled, using multi collection vector manager');
+			const { manager } = await createMultiCollectionVectorStoreFromEnv(config);
+			vectorStoreManager = manager;
+
+			// Set event manager for memory operation events
+			(vectorStoreManager as any).setEventManager(eventManager);
+
+			const info = (vectorStoreManager as any).getInfo();
+			logger.debug('Multi collection vector storage manager initialized successfully', {
+				backend: info.knowledge.manager.getInfo().backend.type,
+				knowledgeCollection: info.knowledge.collectionName,
+				reflectionCollection: info.reflection.enabled ? info.reflection.collectionName : 'disabled',
+				workspaceCollection: info.workspace.enabled ? info.workspace.collectionName : 'disabled',
+				dimension: info.knowledge.manager.getInfo().backend.dimension,
+				knowledgeConnected: info.knowledge.connected,
+				reflectionConnected: info.reflection.connected,
+				workspaceConnected: info.workspace.connected,
+				reflectionEnabled: info.reflection.enabled,
+				workspaceEnabled: info.workspace.enabled,
+			});
+		} else if (reflectionEnabled) {
 			logger.debug('Reflection memory enabled, using dual collection vector manager');
 			const { manager } = await createDualCollectionVectorStoreFromEnv(config);
 			vectorStoreManager = manager;
@@ -663,12 +697,7 @@ export async function createAgentServices(
 	];
 
 	// DEBUG: Print merged provider list (skip in MCP mode to avoid stdout contamination)
-	if (appMode !== 'mcp') {
-		console.log('Merged system prompt providers:');
-		for (const p of mergedProviders) {
-			console.log(`  - ${p.name} (${p.type}) enabled: ${p.enabled}`);
-		}
-	}
+	// Removed verbose logging for cleaner output
 
 	// Merge settings: advancedSettings takes precedence, fallback to default
 	const mergedSettings = {
@@ -699,17 +728,18 @@ export async function createAgentServices(
 			logger.debug('Initializing LLM service...');
 		}
 		const llmConfig = stateManager.getLLMConfig();
-		logger.debug('LLM Config retrieved', { llmConfig });
 
 		// Use ServiceCache for ContextManager to prevent duplicate creation
 		const serviceCache = getServiceCache();
 		const contextManagerKey = createServiceKey('contextManager', {
 			provider: llmConfig.provider,
 			model: llmConfig.model,
+			// Include additional config for proper cache key differentiation
+			apiKey: llmConfig.apiKey ? 'present' : 'missing',
+			baseURL: llmConfig.baseURL || 'default',
 		});
 
 		contextManager = await serviceCache.getOrCreate(contextManagerKey, async () => {
-			logger.debug('Creating new ContextManager instance');
 			return createContextManager(llmConfig, promptManager, undefined, undefined);
 		});
 
@@ -795,22 +825,48 @@ export async function createAgentServices(
 			mode: 'cli', // Special CLI mode
 		};
 	} else if (appMode === 'mcp') {
-		// MCP Mode: Respect MCP_SERVER_MODE for external tool exposure
-		const mcpServerMode = (process.env.MCP_SERVER_MODE as 'default' | 'aggregator') || 'default';
-		unifiedToolManagerConfig = {
-			enableInternalTools: true,
-			enableMcpTools: true,
-			conflictResolution: 'prefix-internal',
-			mode: mcpServerMode,
-		};
+		// MCP Mode: Configure based on MCP_SERVER_MODE
+		const mcpServerMode = process.env.MCP_SERVER_MODE || 'default';
+
+		if (mcpServerMode === 'aggregator') {
+			// Aggregator mode: Use aggregator mode for unified tool manager to expose all tools
+			unifiedToolManagerConfig = {
+				enableInternalTools: true,
+				enableMcpTools: true,
+				conflictResolution: 'prefix-internal',
+				mode: 'aggregator', // Aggregator mode exposes all tools without filtering
+			};
+		} else {
+			// Default MCP mode: Use cli mode internally for agent access to all tools
+			// External MCP exposure is controlled separately in mcp_handler.ts
+			unifiedToolManagerConfig = {
+				enableInternalTools: true,
+				enableMcpTools: true,
+				conflictResolution: 'prefix-internal',
+				mode: 'cli', // Internal agent needs access to all tools in default mode
+			};
+		}
 	} else {
-		// API Mode: Similar to CLI for now
-		unifiedToolManagerConfig = {
-			enableInternalTools: true,
-			enableMcpTools: true,
-			conflictResolution: 'prefix-internal',
-			mode: 'api',
-		};
+		// API Mode: Respect MCP_SERVER_MODE like MCP mode does
+		const mcpServerMode = process.env.MCP_SERVER_MODE || 'default';
+
+		if (mcpServerMode === 'aggregator') {
+			// Aggregator mode: Use aggregator mode for unified tool manager to expose all tools
+			unifiedToolManagerConfig = {
+				enableInternalTools: true,
+				enableMcpTools: true,
+				conflictResolution: 'prefix-internal',
+				mode: 'aggregator', // Aggregator mode exposes all tools without filtering
+			};
+		} else {
+			// Default API mode: Similar to CLI
+			unifiedToolManagerConfig = {
+				enableInternalTools: true,
+				enableMcpTools: true,
+				conflictResolution: 'prefix-internal',
+				mode: 'api',
+			};
+		}
 	}
 
 	const unifiedToolManager = new UnifiedToolManager(

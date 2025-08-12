@@ -19,6 +19,7 @@ export type {
 	InMemoryBackendConfig,
 	QdrantBackendConfig,
 	MilvusBackendConfig,
+	ChromaBackendConfig,
 } from '../config.js';
 
 /**
@@ -186,4 +187,72 @@ export class CollectionNotFoundError extends VectorStoreError {
 		super(message, 'collection_not_found', cause);
 		this.name = 'CollectionNotFoundError';
 	}
+}
+
+/**
+ * Transformation strategy for handling complex payload fields
+ */
+export type PayloadTransformationStrategy =
+	| 'json-string' // Serialize complex objects to JSON strings
+	| 'dot-notation' // Flatten nested objects using dot notation (e.g., user.name -> user_name)
+	| 'comma-separated' // Convert arrays to comma-separated strings
+	| 'boolean-flags' // Convert arrays to multiple boolean fields
+	| 'preserve'; // Keep as-is (for simple types)
+
+/**
+ * Configuration for field transformation
+ */
+export interface FieldTransformationConfig {
+	/** The transformation strategy to use for this field */
+	strategy: PayloadTransformationStrategy;
+	/** Optional custom transformer function for complex scenarios */
+	customTransformer?: {
+		serialize: (value: any) => any;
+		deserialize: (value: any) => any;
+	};
+	/** Prefix for flattened or boolean flag fields */
+	prefix?: string;
+}
+
+/**
+ * Payload transformation configuration
+ */
+export interface PayloadTransformationConfig {
+	/** Default strategy for unknown fields */
+	defaultStrategy: PayloadTransformationStrategy;
+	/** Field-specific transformation rules */
+	fieldConfigs: Record<string, FieldTransformationConfig>;
+	/** Whether to handle nested objects automatically */
+	autoFlattenNested: boolean;
+	/** Maximum depth for auto-flattening nested objects */
+	maxNestingDepth: number;
+}
+
+/**
+ * Payload adapter interface for ChromaDB compatibility
+ */
+export interface ChromaPayloadAdapter {
+	/**
+	 * Transform a complex payload to ChromaDB-compatible format
+	 * @param payload - The original payload with potentially nested data
+	 * @returns ChromaDB-compatible flat metadata object
+	 */
+	serialize(payload: Record<string, any>): Record<string, string | number | boolean>;
+
+	/**
+	 * Transform ChromaDB metadata back to original payload format
+	 * @param metadata - The flat metadata from ChromaDB
+	 * @returns Reconstructed payload object
+	 */
+	deserialize(metadata: Record<string, any>): Record<string, any>;
+
+	/**
+	 * Get the transformation configuration
+	 */
+	getConfig(): PayloadTransformationConfig;
+
+	/**
+	 * Update the transformation configuration
+	 */
+	updateConfig(config: Partial<PayloadTransformationConfig>): void;
 }

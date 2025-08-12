@@ -8,6 +8,7 @@
 // Export all tool categories
 export * from './memory/index.js';
 export * from './knowledge_graph/index.js';
+export * from './system/index.js';
 
 // Import types and utilities
 import type { InternalToolSet } from '../types.js';
@@ -26,6 +27,9 @@ export async function getAllToolDefinitions(
 		// Load memory tools with embedding status
 		const memoryTools = await import('./memory/index.js').then(m => m.getMemoryTools(options));
 
+		// Load system tools (always enabled)
+		const systemTools = await import('./system/index.js').then(m => m.getSystemTools());
+
 		// Conditionally load knowledge graph tools based on environment setting
 		let knowledgeGraphTools: InternalToolSet = {};
 		if (env.KNOWLEDGE_GRAPH_ENABLED) {
@@ -40,6 +44,7 @@ export async function getAllToolDefinitions(
 		// Combine all tools (reasoning tools are already included in memoryTools now)
 		const allTools: InternalToolSet = {
 			...memoryTools,
+			...systemTools,
 			...knowledgeGraphTools,
 		};
 
@@ -147,6 +152,12 @@ export const TOOL_CATEGORIES = {
 		] as string[],
 		useCase:
 			'Use these tools to build, query, and manage knowledge graphs for understanding relationships between entities',
+	},
+	system: {
+		description: 'Tools for system operations, command execution, and environment interaction',
+		tools: ['bash'] as string[],
+		useCase:
+			'Use these tools to execute system commands, interact with the filesystem, and perform system-level operations',
 	},
 };
 

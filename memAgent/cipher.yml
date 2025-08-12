@@ -1,16 +1,15 @@
 # List of MCP servers to use
+# mcpServers: 
+#   filesystem:
+#     type: stdio
+#     command: npx
+#     args:
+#       - -y
+#       - '@modelcontextprotocol/server-filesystem'
+#       - .
 
 # If not specified, please set it like this:
-# mcpServers: {}
-
-mcpServers: 
-  filesystem:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - '@modelcontextprotocol/server-filesystem'
-      - .
+mcpServers: {}
 
 # Choose ONLY ONE of the following LLM providers
 llm:
@@ -76,6 +75,7 @@ llm:
 
 # Embedding configuration: ONLY ONE of the following
 # OpenAI:
+
 # embedding:
 #   type: openai
 #   model: text-embedding-3-small
@@ -92,6 +92,7 @@ llm:
 #   type: ollama
 #   model: mxbai-embed-large
 #   baseUrl: $OLLAMA_BASE_URL
+#   dimensions: 1024
 
 # LM Studio:
 # embedding:

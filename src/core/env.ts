@@ -1,16 +1,19 @@
 import { config } from 'dotenv';
 import { z } from 'zod';
 
-// Load environment variables from .env file - skip entirely in MCP mode
+// Load environment variables from .env file
+// Note: In MCP mode, the MCP host typically provides required environment variables
+// via the "env" field in MCP configuration, but .env files can still provide additional
+// configuration like workspace memory settings that may not be in MCP config
 const isMcpMode =
 	process.argv.includes('--mode') && process.argv[process.argv.indexOf('--mode') + 1] === 'mcp';
 
 if (isMcpMode) {
-	// In MCP mode, skip .env file loading entirely since all environment variables
-	// are provided via the "env" field in the MCP configuration
-	// No need to load .env files as MCP host provides all required environment variables
+	// In MCP mode, load .env file but with lower priority than MCP-provided env vars
+	// This allows .env to provide additional configuration while letting MCP config take precedence
+	config({ override: false });
 } else {
-	// Normal mode - load environment variables from .env file
+	// Normal mode - load environment variables from .env file with override
 	config();
 }
 
@@ -40,6 +43,7 @@ const envSchema = z.object({
 	STORAGE_CACHE_TYPE: z.enum(['in-memory', 'redis']).default('in-memory'),
 	STORAGE_CACHE_HOST: z.string().optional(),
 	STORAGE_CACHE_PORT: z.number().optional(),
+	STORAGE_CACHE_USERNAME: z.string().optional(),
 	STORAGE_CACHE_PASSWORD: z.string().optional(),
 	STORAGE_CACHE_DATABASE: z.number().optional(),
 	STORAGE_DATABASE_TYPE: z.enum(['in-memory', 'sqlite', 'postgres']).default('in-memory'),
@@ -60,7 +64,7 @@ const envSchema = z.object({
 	VECTOR_STORE_API_KEY: z.string().optional(),
 	VECTOR_STORE_USERNAME: z.string().optional(),
 	VECTOR_STORE_PASSWORD: z.string().optional(),
-	VECTOR_STORE_COLLECTION: z.string().default('default'),
+	VECTOR_STORE_COLLECTION: z.string().default('knowledge_memory'),
 	VECTOR_STORE_DIMENSION: z.number().default(1536),
 	VECTOR_STORE_DISTANCE: z.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan']).default('Cosine'),
 	VECTOR_STORE_ON_DISK: z.boolean().default(false),
@@ -75,10 +79,10 @@ const envSchema = z.object({
 	KNOWLEDGE_GRAPH_PASSWORD: z.string().optional(),
 	KNOWLEDGE_GRAPH_DATABASE: z.string().default('neo4j'),
 	// Memory Search Configuration
-	SEARCH_MEMORY_TYPE: z.enum(['knowledge', 'reflection', 'both']).default('both'),
+	SEARCH_MEMORY_TYPE: z.enum(['knowledge', 'reflection', 'both']).default('knowledge'),
 	// Reflection Memory Configuration
 	REFLECTION_VECTOR_STORE_COLLECTION: z.string().default('reflection_memory'),
-	DISABLE_REFLECTION_MEMORY: z.boolean().default(false),
+	DISABLE_REFLECTION_MEMORY: z.boolean().default(true),
 	// Event Persistence Configuration
 	EVENT_PERSISTENCE_ENABLED: z.boolean().default(false),
 	EVENT_PERSISTENCE_PATH: z.string().optional(),
@@ -92,6 +96,30 @@ const envSchema = z.object({
 	DISABLE_BACKGROUND_PRELOAD: z.string().optional(),
 	LAZY_INIT_TIMEOUT: z.string().optional(),
 	BACKGROUND_PRELOAD_DELAY: z.string().optional(),
+	// Workspace Memory Configuration
+	USE_WORKSPACE_MEMORY: z.boolean().default(false),
+	WORKSPACE_SEARCH_THRESHOLD: z.number().default(0.4),
+	DISABLE_DEFAULT_MEMORY: z.boolean().default(false),
+	WORKSPACE_VECTOR_STORE_TYPE: z.enum(['qdrant', 'milvus', 'in-memory']).optional(),
+	WORKSPACE_VECTOR_STORE_HOST: z.string().optional(),
+	WORKSPACE_VECTOR_STORE_PORT: z.number().optional(),
+	WORKSPACE_VECTOR_STORE_URL: z.string().optional(),
+	WORKSPACE_VECTOR_STORE_API_KEY: z.string().optional(),
+	WORKSPACE_VECTOR_STORE_USERNAME: z.string().optional(),
+	WORKSPACE_VECTOR_STORE_PASSWORD: z.string().optional(),
+	WORKSPACE_VECTOR_STORE_COLLECTION: z.string().default('workspace_memory'),
+	WORKSPACE_VECTOR_STORE_DIMENSION: z.number().optional(),
+	WORKSPACE_VECTOR_STORE_DISTANCE: z.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan']).optional(),
+	WORKSPACE_VECTOR_STORE_ON_DISK: z.boolean().optional(),
+	WORKSPACE_VECTOR_STORE_MAX_VECTORS: z.number().optional(),
+	// Query Refinement Configuration
+	ENABLE_QUERY_REFINEMENT: z.boolean().default(true),
+	// Cross-Tool Memory Sharing Configuration
+	CIPHER_USER_ID: z.string().optional(),
+	CIPHER_PROJECT_NAME: z.string().optional(),
+	CIPHER_WORKSPACE_MODE: z.enum(['shared', 'isolated']).default('isolated'),
+	// MCP Aggregator Configuration
+	USE_ASK_CIPHER: z.boolean().default(false),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -154,6 +182,8 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.STORAGE_CACHE_PORT
 					? parseInt(process.env.STORAGE_CACHE_PORT, 10)
 					: undefined;
+			case 'STORAGE_CACHE_USERNAME':
+				return process.env.STORAGE_CACHE_USERNAME;
 			case 'STORAGE_CACHE_PASSWORD':
 				return process.env.STORAGE_CACHE_PASSWORD;
 			case 'STORAGE_CACHE_DATABASE':
@@ -199,7 +229,7 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 			case 'VECTOR_STORE_PASSWORD':
 				return process.env.VECTOR_STORE_PASSWORD;
 			case 'VECTOR_STORE_COLLECTION':
-				return process.env.VECTOR_STORE_COLLECTION || 'default';
+				return process.env.VECTOR_STORE_COLLECTION || 'knowledge_memory';
 			case 'VECTOR_STORE_DIMENSION':
 				return process.env.VECTOR_STORE_DIMENSION
 					? parseInt(process.env.VECTOR_STORE_DIMENSION, 10)
@@ -233,7 +263,7 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.KNOWLEDGE_GRAPH_DATABASE || 'neo4j';
 			// Memory Search Configuration
 			case 'SEARCH_MEMORY_TYPE':
-				return process.env.SEARCH_MEMORY_TYPE || 'both';
+				return process.env.SEARCH_MEMORY_TYPE || 'knowledge';
 			// Reflection Memory Configuration
 			case 'REFLECTION_VECTOR_STORE_COLLECTION': {
 				// Handle boolean conversion for test compatibility
@@ -268,6 +298,66 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.LAZY_INIT_TIMEOUT;
 			case 'BACKGROUND_PRELOAD_DELAY':
 				return process.env.BACKGROUND_PRELOAD_DELAY;
+			// Workspace Memory Configuration
+			case 'USE_WORKSPACE_MEMORY':
+				return process.env.USE_WORKSPACE_MEMORY === 'true';
+			case 'WORKSPACE_SEARCH_THRESHOLD':
+				return process.env.WORKSPACE_SEARCH_THRESHOLD
+					? parseFloat(process.env.WORKSPACE_SEARCH_THRESHOLD)
+					: 0.4;
+			case 'DISABLE_DEFAULT_MEMORY':
+				return process.env.DISABLE_DEFAULT_MEMORY === 'true';
+			case 'WORKSPACE_VECTOR_STORE_TYPE':
+				return process.env.WORKSPACE_VECTOR_STORE_TYPE;
+			case 'WORKSPACE_VECTOR_STORE_HOST':
+				return process.env.WORKSPACE_VECTOR_STORE_HOST;
+			case 'WORKSPACE_VECTOR_STORE_PORT':
+				return process.env.WORKSPACE_VECTOR_STORE_PORT
+					? parseInt(process.env.WORKSPACE_VECTOR_STORE_PORT, 10)
+					: undefined;
+			case 'WORKSPACE_VECTOR_STORE_URL':
+				return process.env.WORKSPACE_VECTOR_STORE_URL;
+			case 'WORKSPACE_VECTOR_STORE_API_KEY':
+				return process.env.WORKSPACE_VECTOR_STORE_API_KEY;
+			case 'WORKSPACE_VECTOR_STORE_USERNAME':
+				return process.env.WORKSPACE_VECTOR_STORE_USERNAME;
+			case 'WORKSPACE_VECTOR_STORE_PASSWORD':
+				return process.env.WORKSPACE_VECTOR_STORE_PASSWORD;
+			case 'WORKSPACE_VECTOR_STORE_COLLECTION':
+				return process.env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory';
+			case 'WORKSPACE_VECTOR_STORE_DIMENSION':
+				return process.env.WORKSPACE_VECTOR_STORE_DIMENSION
+					? parseInt(process.env.WORKSPACE_VECTOR_STORE_DIMENSION, 10)
+					: process.env.VECTOR_STORE_DIMENSION
+						? parseInt(process.env.VECTOR_STORE_DIMENSION, 10)
+						: 1536;
+			case 'WORKSPACE_VECTOR_STORE_DISTANCE':
+				return (
+					process.env.WORKSPACE_VECTOR_STORE_DISTANCE ||
+					process.env.VECTOR_STORE_DISTANCE ||
+					'Cosine'
+				);
+			case 'WORKSPACE_VECTOR_STORE_ON_DISK':
+				return process.env.WORKSPACE_VECTOR_STORE_ON_DISK !== undefined
+					? process.env.WORKSPACE_VECTOR_STORE_ON_DISK === 'true'
+					: process.env.VECTOR_STORE_ON_DISK !== undefined
+						? process.env.VECTOR_STORE_ON_DISK === 'true'
+						: false;
+			case 'WORKSPACE_VECTOR_STORE_MAX_VECTORS':
+				return process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS
+					? parseInt(process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS, 10)
+					: process.env.VECTOR_STORE_MAX_VECTORS
+						? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
+						: 10000;
+			// Cross-Tool Memory Sharing Configuration
+			case 'CIPHER_USER_ID':
+				return process.env.CIPHER_USER_ID;
+			case 'CIPHER_PROJECT_NAME':
+				return process.env.CIPHER_PROJECT_NAME;
+			case 'CIPHER_WORKSPACE_MODE':
+				return process.env.CIPHER_WORKSPACE_MODE || 'isolated';
+			case 'USE_ASK_CIPHER':
+				return process.env.USE_ASK_CIPHER === 'true';
 			default:
 				return process.env[prop];
 		}
@@ -342,6 +432,7 @@ export const validateEnv = () => {
 		STORAGE_CACHE_PORT: process.env.STORAGE_CACHE_PORT
 			? parseInt(process.env.STORAGE_CACHE_PORT, 10)
 			: undefined,
+		STORAGE_CACHE_USERNAME: process.env.STORAGE_CACHE_USERNAME,
 		STORAGE_CACHE_PASSWORD: process.env.STORAGE_CACHE_PASSWORD,
 		STORAGE_CACHE_DATABASE: process.env.STORAGE_CACHE_DATABASE
 			? parseInt(process.env.STORAGE_CACHE_DATABASE, 10)
@@ -368,7 +459,7 @@ export const validateEnv = () => {
 		VECTOR_STORE_API_KEY: process.env.VECTOR_STORE_API_KEY,
 		VECTOR_STORE_USERNAME: process.env.VECTOR_STORE_USERNAME,
 		VECTOR_STORE_PASSWORD: process.env.VECTOR_STORE_PASSWORD,
-		VECTOR_STORE_COLLECTION: process.env.VECTOR_STORE_COLLECTION || 'default',
+		VECTOR_STORE_COLLECTION: process.env.VECTOR_STORE_COLLECTION || 'knowledge_memory',
 		VECTOR_STORE_DIMENSION: process.env.VECTOR_STORE_DIMENSION
 			? parseInt(process.env.VECTOR_STORE_DIMENSION, 10)
 			: 1536,
@@ -389,11 +480,40 @@ export const validateEnv = () => {
 		KNOWLEDGE_GRAPH_PASSWORD: process.env.KNOWLEDGE_GRAPH_PASSWORD,
 		KNOWLEDGE_GRAPH_DATABASE: process.env.KNOWLEDGE_GRAPH_DATABASE || 'neo4j',
 		// Memory Search Configuration
-		SEARCH_MEMORY_TYPE: process.env.SEARCH_MEMORY_TYPE || 'both',
+		SEARCH_MEMORY_TYPE: process.env.SEARCH_MEMORY_TYPE || 'knowledge',
 		// Reflection Memory Configuration
 		REFLECTION_VECTOR_STORE_COLLECTION:
 			process.env.REFLECTION_VECTOR_STORE_COLLECTION || 'reflection_memory',
 		DISABLE_REFLECTION_MEMORY: process.env.DISABLE_REFLECTION_MEMORY === 'true',
+		// Workspace Memory Configuration
+		USE_WORKSPACE_MEMORY: process.env.USE_WORKSPACE_MEMORY === 'true',
+		WORKSPACE_SEARCH_THRESHOLD: process.env.WORKSPACE_SEARCH_THRESHOLD
+			? parseFloat(process.env.WORKSPACE_SEARCH_THRESHOLD)
+			: 0.4,
+		DISABLE_DEFAULT_MEMORY: process.env.DISABLE_DEFAULT_MEMORY === 'true',
+		WORKSPACE_VECTOR_STORE_TYPE: process.env.WORKSPACE_VECTOR_STORE_TYPE,
+		WORKSPACE_VECTOR_STORE_HOST: process.env.WORKSPACE_VECTOR_STORE_HOST,
+		WORKSPACE_VECTOR_STORE_PORT: process.env.WORKSPACE_VECTOR_STORE_PORT
+			? parseInt(process.env.WORKSPACE_VECTOR_STORE_PORT, 10)
+			: undefined,
+		WORKSPACE_VECTOR_STORE_URL: process.env.WORKSPACE_VECTOR_STORE_URL,
+		WORKSPACE_VECTOR_STORE_API_KEY: process.env.WORKSPACE_VECTOR_STORE_API_KEY,
+		WORKSPACE_VECTOR_STORE_USERNAME: process.env.WORKSPACE_VECTOR_STORE_USERNAME,
+		WORKSPACE_VECTOR_STORE_PASSWORD: process.env.WORKSPACE_VECTOR_STORE_PASSWORD,
+		WORKSPACE_VECTOR_STORE_COLLECTION:
+			process.env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory',
+		WORKSPACE_VECTOR_STORE_DIMENSION: process.env.WORKSPACE_VECTOR_STORE_DIMENSION
+			? parseInt(process.env.WORKSPACE_VECTOR_STORE_DIMENSION, 10)
+			: 1536,
+		WORKSPACE_VECTOR_STORE_DISTANCE: process.env.WORKSPACE_VECTOR_STORE_DISTANCE || 'Cosine',
+		WORKSPACE_VECTOR_STORE_ON_DISK: process.env.WORKSPACE_VECTOR_STORE_ON_DISK === 'true',
+		WORKSPACE_VECTOR_STORE_MAX_VECTORS: process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS
+			? parseInt(process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS, 10)
+			: 10000,
+		// Cross-Tool Memory Sharing Configuration
+		CIPHER_USER_ID: process.env.CIPHER_USER_ID,
+		CIPHER_PROJECT_NAME: process.env.CIPHER_PROJECT_NAME,
+		CIPHER_WORKSPACE_MODE: process.env.CIPHER_WORKSPACE_MODE || 'isolated',
 	};
 
 	const result = envSchema.safeParse(envToValidate);

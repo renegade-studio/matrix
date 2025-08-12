@@ -8,7 +8,7 @@ import {
 	extractTechnicalTags,
 } from './memory_operation.js';
 // Import payload migration utilities
-import { createKnowledgePayload } from './payloads.js';
+import { createKnowledgePayload, extractKnowledgeInfo, mergeKnowledgeInfo } from './payloads.js';
 
 /**
  * Determines if a piece of content is significant enough to be extracted as knowledge
@@ -354,20 +354,28 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					required: ['id', 'text'],
 				},
 			},
+			// Minimal structured hints for payload (agent > extraction)
+			knowledgeInfo: {
+				type: 'object',
+				description:
+					'Optional LLM/agent-provided knowledge info (takes precedence over extraction)',
+				properties: {
+					domain: {
+						type: 'string',
+						description: 'Knowledge domain (frontend, backend, devops, ...)',
+					},
+					codePattern: { type: 'string', description: 'Canonical code pattern to store' },
+				},
+				additionalProperties: false,
+			},
 			context: {
 				type: 'object',
 				description: 'Optional context information for memory operations',
 				properties: {
-					sessionId: { type: 'string', description: 'Current session identifier' },
-					userId: { type: 'string', description: 'User identifier for personalized memory' },
-					projectId: { type: 'string', description: 'Project identifier for scoped memory' },
-					conversationTopic: { type: 'string', description: 'Current conversation topic or theme' },
-					recentMessages: {
-						type: 'array',
-						items: { type: 'string' },
-						description: 'Recent conversation messages for context',
+					sessionId: {
+						type: 'string',
+						description: 'Current session identifier (stored as sourceSessionId)',
 					},
-					sessionMetadata: { type: 'object', description: 'Additional session metadata' },
 				},
 				additionalProperties: false,
 			},
@@ -385,7 +393,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						type: 'number',
 						description: 'Maximum number of similar memories to retrieve',
 						minimum: 1,
-						maximum: 20,
+						maximum: 10,
 					},
 					enableBatchProcessing: {
 						type: 'boolean',
@@ -394,6 +402,11 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					useLLMDecisions: {
 						type: 'boolean',
 						description: 'Whether to use LLM-powered decision making',
+					},
+					autoExtractKnowledgeInfo: {
+						type: 'boolean',
+						description: 'Whether to automatically extract knowledge info (agent > extraction)',
+						default: true,
 					},
 					confidenceThreshold: {
 						type: 'number',
@@ -410,13 +423,11 @@ export const extractAndOperateMemoryTool: InternalTool = {
 			},
 			memoryMetadata: {
 				type: 'object',
-				description:
-					'Custom metadata to attach to created memories (projectId, userId, teamId, etc.)',
+				description: 'Custom metadata to attach to created memories (projectId, userId, etc.)',
 				additionalProperties: true,
 				properties: {
 					projectId: { type: 'string', description: 'Project identifier for scoped memory' },
 					userId: { type: 'string', description: 'User identifier for personalized memory' },
-					teamId: { type: 'string', description: 'Team identifier for team-scoped memory' },
 					environment: { type: 'string', description: 'Environment (dev, staging, prod)' },
 					source: { type: 'string', description: 'Source of the memory (cli, api, web)' },
 				},
@@ -566,7 +577,6 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					event: 'ADD' as const,
 					tags: extractTechnicalTags(fact),
 					confidence: 0.7,
-					reasoning: 'Basic processing without vector services',
 				}));
 
 				return {
@@ -577,7 +587,6 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						factPreview: action.text.substring(0, 80),
 						action: action.event,
 						confidence: action.confidence,
-						reason: action.reasoning,
 						targetId: action.id,
 					})),
 					timestamp: new Date().toISOString(),
@@ -598,7 +607,6 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					event: 'ADD' as const,
 					tags: extractTechnicalTags(fact),
 					confidence: 0.6,
-					reasoning: 'Fallback processing due to missing services',
 				}));
 
 				return {
@@ -609,7 +617,6 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						factPreview: action.text.substring(0, 80),
 						action: action.event,
 						confidence: action.confidence,
-						reason: action.reasoning,
 						targetId: action.id,
 					})),
 					timestamp: new Date().toISOString(),
@@ -640,7 +647,6 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					event: 'ADD' as const,
 					tags: extractTechnicalTags(fact),
 					confidence: 0.6,
-					reasoning: 'Basic processing - embedder/vector store unavailable',
 				}));
 
 				return {
@@ -651,7 +657,6 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						factPreview: action.text.substring(0, 80),
 						action: action.event,
 						confidence: action.confidence,
-						reason: action.reasoning,
 						targetId: action.id,
 					})),
 					timestamp: new Date().toISOString(),
@@ -663,9 +668,9 @@ export const extractAndOperateMemoryTool: InternalTool = {
 			}
 
 			const options = {
-				similarityThreshold: args.options?.similarityThreshold ?? 0.8,
+				similarityThreshold: args.options?.similarityThreshold ?? 0.6,
 				maxSimilarResults: args.options?.maxSimilarResults ?? 5,
-				useLLMDecisions: args.options?.useLLMDecisions ?? false,
+				useLLMDecisions: args.options?.useLLMDecisions ?? true,
 			};
 
 			const memoryActions = [];
@@ -871,14 +876,12 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						event: action,
 						tags: extractTechnicalTags(fact),
 						confidence,
-						reasoning: reason,
 					});
 
 					memorySummaries.push({
 						factPreview: fact.substring(0, 80),
 						action,
 						confidence,
-						reason,
 						targetId,
 					});
 				} catch (factError) {
@@ -894,7 +897,6 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						event: 'ADD',
 						tags: extractTechnicalTags(fact),
 						confidence: 0.4,
-						reasoning: `Fallback due to processing error: ${factError instanceof Error ? factError.message : String(factError)}`,
 					});
 				}
 			}
@@ -923,14 +925,11 @@ export const extractAndOperateMemoryTool: InternalTool = {
 
 						// Determine quality source based on how the decision was made
 						let qualitySource: 'similarity' | 'llm' | 'heuristic' = 'heuristic';
-						if (action.reasoning.includes('LLM')) {
-							qualitySource = 'llm';
-						} else if (action.reasoning.includes('similarity')) {
-							qualitySource = 'similarity';
-						}
+						// Default to heuristic since reasoning field is removed
+						qualitySource = 'heuristic';
 
 						// Create V2 payload with enhanced metadata
-						const domain = inferDomainFromTags(action.tags);
+						const domainFromTags = inferDomainFromTags(action.tags);
 						const options: any = {
 							qualitySource,
 						};
@@ -938,11 +937,24 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						if (context?.sessionId) {
 							options.sourceSessionId = context.sessionId;
 						}
-						if (domain) {
-							options.domain = domain;
-						}
-						if ('code_pattern' in action && action.code_pattern) {
-							options.code_pattern = action.code_pattern;
+
+						// Merge knowledge info (agent-provided takes precedence over extraction)
+						if (args.options?.autoExtractKnowledgeInfo !== false) {
+							const llmKnowledge = args.knowledgeInfo || {};
+							const extractedKnowledge = extractKnowledgeInfo(action.text);
+							const merged = mergeKnowledgeInfo(llmKnowledge, extractedKnowledge);
+							if (merged.domain) options.domain = merged.domain;
+							if (merged.codePattern) options.code_pattern = merged.codePattern;
+						} else {
+							// No extraction: only use provided knowledgeInfo or fallback to tags
+							if (args.knowledgeInfo?.domain) {
+								options.domain = args.knowledgeInfo.domain;
+							} else if (domainFromTags) {
+								options.domain = domainFromTags;
+							}
+							if (args.knowledgeInfo?.codePattern) {
+								options.code_pattern = args.knowledgeInfo.codePattern;
+							}
 						}
 						if ('old_memory' in action && action.old_memory) {
 							options.old_memory = action.old_memory;
@@ -953,7 +965,6 @@ export const extractAndOperateMemoryTool: InternalTool = {
 							action.text,
 							action.tags,
 							action.confidence,
-							action.reasoning,
 							action.event as 'ADD' | 'UPDATE' | 'DELETE' | 'NONE',
 							options
 						);
@@ -978,7 +989,6 @@ export const extractAndOperateMemoryTool: InternalTool = {
 							await vectorStore.delete(action.id);
 							logger.debug(`ExtractAndOperateMemory: ${action.event} operation completed`, {
 								memoryId: action.id,
-								reasoning: action.reasoning,
 							});
 						}
 						persistedCount++;
