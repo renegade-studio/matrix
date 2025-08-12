@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  matrix-server:
+    build:
+      context: ./matrix-go
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - POCKETBASE_URL=http://pocketbase:8090
+      # You should create a .env file based on .env.example and populate it with your API keys
+    env_file:
+      - .env
+    volumes:
+      - ./memAgent:/app/memAgent:ro
+      - ./memAgent/matrix.yml:/app/matrix.yml:ro
+    networks:
+      - matrix-net
+    restart: unless-stopped
+    depends_on:
+      - pocketbase
+
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest # Using a popular pre-built image
+    ports:
+      - "8090:8090"
+    volumes:
+      - pocketbase_data:/pb_data
+    networks:
+      - matrix-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8090/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  matrix-net:
+
+volumes:
+  pocketbase_data:
