@@ -4,7 +4,7 @@
 
 ## Overview
 
-This configuration demonstrates Cipher as a memory layer for Claude Code and Gemini CLI. Unlike traditional CLI tools that lose context between sessions, this setup provides persistent memory that grows with your development workflow.
+This configuration demonstrates Matrix as a memory layer for Claude Code and Gemini CLI. Unlike traditional CLI tools that lose context between sessions, this setup provides persistent memory that grows with your development workflow.
 
 **Key Benefits:**
 - **Persistent memory** across CLI sessions
@@ -37,9 +37,9 @@ Create or edit `.mcp.json` in your project root:
 ```json
 {
   "mcpServers": {
-    "cipher": {
-      "command": "cipher",
-      "args": ["--mode", "mcp", "--agent", "./cipher.yml"],
+    "matrix": {
+      "command": "matrix",
+      "args": ["--mode", "mcp", "--agent", "./matrix.yml"],
       "env": {
         "ANTHROPIC_API_KEY": "your_anthropic_api_key",
         "OPENAI_API_KEY": "your_openai_api_key"
@@ -55,9 +55,9 @@ Add to your Gemini CLI `settings.json`:
 ```json
 {
   "mcpServers": {
-    "cipher": {
-      "command": "cipher",
-      "args": ["--mode", "mcp", "--agent", "./cipher.yml"],
+    "matrix": {
+      "command": "matrix",
+      "args": ["--mode", "mcp", "--agent", "./matrix.yml"],
       "env": {
         "ANTHROPIC_API_KEY": "your_anthropic_api_key",
         "OPENAI_API_KEY": "your_openai_api_key"
@@ -77,7 +77,7 @@ claude
 
 **Gemini CLI:**
 ```bash
-gemini "Use cipher to analyze my codebase"
+gemini "Use matrix to analyze my codebase"
 ```
 
 ## Usage Examples

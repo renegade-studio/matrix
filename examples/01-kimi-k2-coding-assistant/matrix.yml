@@ -96,5 +96,5 @@ agentCard:
   description: "Advanced coding assistant powered by Kimi K2 with comprehensive development tools"
   version: "1.0.0"
   provider:
-    organization: "Cipher Development"
-    url: "https://github.com/your-org/cipher"
+    organization: "Matrix Development"
+    url: "https://github.com/your-org/matrix"

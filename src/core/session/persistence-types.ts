@@ -131,7 +131,7 @@ export const SESSION_PERSISTENCE_CONSTANTS = {
 	CURRENT_VERSION: '1.0.0',
 
 	/** Default storage key prefix */
-	DEFAULT_STORAGE_PREFIX: 'cipher:sessions:',
+	DEFAULT_STORAGE_PREFIX: 'matrix:sessions:',
 
 	/** Default maximum number of sessions to save */
 	DEFAULT_MAX_SESSIONS: 50,

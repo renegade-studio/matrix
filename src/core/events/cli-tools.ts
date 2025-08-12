@@ -227,7 +227,7 @@ export class EventCliTools {
 		console.log('='.repeat(50));
 		console.log('Service Metrics:');
 		console.table({
-			'Cipher Uptime': `${(serviceMetrics.cipherUptime / 1000).toFixed(2)}s`,
+			'Matrix Uptime': `${(serviceMetrics.matrixUptime / 1000).toFixed(2)}s`,
 			'Services Started': serviceMetrics.serviceStartCount,
 			'Service Errors': serviceMetrics.serviceErrorCount,
 			'Tool Registrations': serviceMetrics.toolRegistrationCount,
@@ -289,7 +289,7 @@ export class EventCliTools {
 		});
 
 		console.log(
-			'Event monitoring started. You should see events appear in real-time as you use cipher.'
+			'Event monitoring started. You should see events appear in real-time as you use matrix.'
 		);
 		console.log('Try running some commands to generate events!');
 	}

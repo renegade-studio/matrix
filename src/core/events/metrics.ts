@@ -16,8 +16,8 @@ export interface MetricValue {
 }
 
 export interface ServiceMetrics {
-	// Cipher lifecycle
-	cipherUptime: number;
+	// Matrix lifecycle
+	matrixUptime: number;
 	serviceStartCount: number;
 	serviceErrorCount: number;
 	allServicesReadyCount: number;
@@ -115,65 +115,65 @@ export class EventMetricsCollector {
 		const now = Date.now();
 
 		switch (event.type) {
-			case 'cipher:started':
+			case 'matrix:started':
 				this.processingStartTime = event.metadata.timestamp;
 				break;
 
-			case 'cipher:serviceStarted':
+			case 'matrix:serviceStarted':
 				this.serviceMetrics.serviceStartCount++;
 				break;
 
-			case 'cipher:serviceError':
+			case 'matrix:serviceError':
 				this.serviceMetrics.serviceErrorCount++;
 				break;
 
-			case 'cipher:allServicesReady':
+			case 'matrix:allServicesReady':
 				this.serviceMetrics.allServicesReadyCount++;
 				break;
 
-			case 'cipher:toolRegistered':
+			case 'matrix:toolRegistered':
 				this.serviceMetrics.toolRegistrationCount++;
 				break;
 
-			case 'cipher:toolError':
+			case 'matrix:toolError':
 				this.serviceMetrics.toolErrorCount++;
 				break;
 
-			case 'cipher:mcpClientConnected':
+			case 'matrix:mcpClientConnected':
 				this.serviceMetrics.mcpConnectionCount++;
 				break;
 
-			case 'cipher:mcpClientDisconnected':
+			case 'matrix:mcpClientDisconnected':
 				this.serviceMetrics.mcpDisconnectionCount++;
 				break;
 
-			case 'cipher:mcpClientError':
+			case 'matrix:mcpClientError':
 				this.serviceMetrics.mcpErrorCount++;
 				break;
 
-			case 'cipher:vectorStoreConnected':
+			case 'matrix:vectorStoreConnected':
 				this.serviceMetrics.vectorStoreConnectionCount++;
 				break;
 
-			case 'cipher:vectorStoreDisconnected':
+			case 'matrix:vectorStoreDisconnected':
 				this.serviceMetrics.vectorStoreDisconnectionCount++;
 				break;
 
-			case 'cipher:vectorStoreError':
+			case 'matrix:vectorStoreError':
 				this.serviceMetrics.vectorStoreErrorCount++;
 				break;
 
-			case 'cipher:llmProviderRegistered':
+			case 'matrix:llmProviderRegistered':
 				this.serviceMetrics.llmProviderRegistrationCount++;
 				break;
 
-			case 'cipher:llmProviderError':
+			case 'matrix:llmProviderError':
 				this.serviceMetrics.llmProviderErrorCount++;
 				break;
 		}
 
-		// Update cipher uptime
-		this.serviceMetrics.cipherUptime = now - this.processingStartTime;
+		// Update matrix uptime
+		this.serviceMetrics.matrixUptime = now - this.processingStartTime;
 	}
 
 	/**
@@ -351,7 +351,7 @@ export class EventMetricsCollector {
 
 	private initializeServiceMetrics(): ServiceMetrics {
 		return {
-			cipherUptime: 0,
+			matrixUptime: 0,
 			serviceStartCount: 0,
 			serviceErrorCount: 0,
 			allServicesReadyCount: 0,
@@ -459,35 +459,35 @@ export class MetricsExporter {
 		const lines: string[] = [];
 
 		// Service metrics
-		lines.push(`# HELP cipher_uptime_seconds Total uptime of cipher instance`);
-		lines.push(`# TYPE cipher_uptime_seconds gauge`);
-		lines.push(`cipher_uptime_seconds ${metrics.service.cipherUptime / 1000}`);
+		lines.push(`# HELP matrix_uptime_seconds Total uptime of matrix instance`);
+		lines.push(`# TYPE matrix_uptime_seconds gauge`);
+		lines.push(`matrix_uptime_seconds ${metrics.service.matrixUptime / 1000}`);
 
-		lines.push(`# HELP cipher_service_starts_total Total number of service starts`);
-		lines.push(`# TYPE cipher_service_starts_total counter`);
-		lines.push(`cipher_service_starts_total ${metrics.service.serviceStartCount}`);
+		lines.push(`# HELP matrix_service_starts_total Total number of service starts`);
+		lines.push(`# TYPE matrix_service_starts_total counter`);
+		lines.push(`matrix_service_starts_total ${metrics.service.serviceStartCount}`);
 
-		lines.push(`# HELP cipher_tool_executions_total Total number of tool executions`);
-		lines.push(`# TYPE cipher_tool_executions_total counter`);
-		lines.push(`cipher_tool_executions_total ${metrics.session.toolExecutionCount}`);
+		lines.push(`# HELP matrix_tool_executions_total Total number of tool executions`);
+		lines.push(`# TYPE matrix_tool_executions_total counter`);
+		lines.push(`matrix_tool_executions_total ${metrics.session.toolExecutionCount}`);
 
-		lines.push(`# HELP cipher_tool_execution_duration_ms Tool execution duration in milliseconds`);
-		lines.push(`# TYPE cipher_tool_execution_duration_ms histogram`);
+		lines.push(`# HELP matrix_tool_execution_duration_ms Tool execution duration in milliseconds`);
+		lines.push(`# TYPE matrix_tool_execution_duration_ms histogram`);
 		lines.push(
-			`cipher_tool_execution_duration_ms_count ${metrics.session.toolExecutionDuration.count}`
+			`matrix_tool_execution_duration_ms_count ${metrics.session.toolExecutionDuration.count}`
 		);
 		lines.push(
-			`cipher_tool_execution_duration_ms_sum ${metrics.session.toolExecutionDuration.sum}`
+			`matrix_tool_execution_duration_ms_sum ${metrics.session.toolExecutionDuration.sum}`
 		);
 
-		lines.push(`# HELP cipher_llm_responses_total Total number of LLM responses`);
-		lines.push(`# TYPE cipher_llm_responses_total counter`);
-		lines.push(`cipher_llm_responses_total ${metrics.session.llmResponseCount}`);
+		lines.push(`# HELP matrix_llm_responses_total Total number of LLM responses`);
+		lines.push(`# TYPE matrix_llm_responses_total counter`);
+		lines.push(`matrix_llm_responses_total ${metrics.session.llmResponseCount}`);
 
-		lines.push(`# HELP cipher_memory_operations_total Total number of memory operations`);
-		lines.push(`# TYPE cipher_memory_operations_total counter`);
+		lines.push(`# HELP matrix_memory_operations_total Total number of memory operations`);
+		lines.push(`# TYPE matrix_memory_operations_total counter`);
 		lines.push(
-			`cipher_memory_operations_total ${metrics.session.memoryStoreCount + metrics.session.memoryRetrieveCount}`
+			`matrix_memory_operations_total ${metrics.session.memoryStoreCount + metrics.session.memoryRetrieveCount}`
 		);
 
 		return lines.join('\n') + '\n';
@@ -523,12 +523,12 @@ export class MetricsExporter {
 		return {
 			series: [
 				{
-					metric: 'cipher.uptime',
+					metric: 'matrix.uptime',
 					type: 'gauge',
-					points: [[Date.now() / 1000, metrics.service.cipherUptime / 1000]],
+					points: [[Date.now() / 1000, metrics.service.matrixUptime / 1000]],
 				},
 				{
-					metric: 'cipher.tool.executions',
+					metric: 'matrix.tool.executions',
 					type: 'count',
 					points: [[Date.now() / 1000, metrics.session.toolExecutionCount]],
 				},
@@ -541,9 +541,9 @@ export class MetricsExporter {
 		return {
 			metrics: [
 				{
-					name: 'cipher.uptime',
+					name: 'matrix.uptime',
 					type: 'gauge',
-					value: metrics.service.cipherUptime / 1000,
+					value: metrics.service.matrixUptime / 1000,
 					timestamp: Date.now(),
 				},
 			],
@@ -555,8 +555,8 @@ export class MetricsExporter {
 		return {
 			MetricData: [
 				{
-					MetricName: 'CipherUptime',
-					Value: metrics.service.cipherUptime / 1000,
+					MetricName: 'MatrixUptime',
+					Value: metrics.service.matrixUptime / 1000,
 					Unit: 'Seconds',
 					Timestamp: new Date(),
 				},

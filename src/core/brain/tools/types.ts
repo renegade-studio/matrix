@@ -30,7 +30,7 @@ export type InternalToolHandler<T = any, R = any> = (
  */
 export interface InternalTool extends Tool {
 	/**
-	 * Unique name for the tool (should be prefixed with 'cipher_')
+	 * Unique name for the tool (should be prefixed with 'matrix_')
 	 */
 	name: string;
 
@@ -307,7 +307,7 @@ export interface IInternalToolManager {
 /**
  * Prefix for all internal tool names to avoid conflicts
  */
-export const INTERNAL_TOOL_PREFIX = 'cipher_';
+export const INTERNAL_TOOL_PREFIX = 'matrix_';
 
 /**
  * Helper function to create internal tool name

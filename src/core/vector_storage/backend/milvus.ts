@@ -52,7 +52,7 @@ export class MilvusBackend implements VectorStore {
 		this.collectionName = config.collectionName;
 		this.dimension = config.dimension;
 		this.logger = createLogger({
-			level: env.CIPHER_LOG_LEVEL || 'info',
+			level: env.MATRIX_LOG_LEVEL || 'info',
 		});
 
 		// Prepare connection configuration for pool

@@ -29,7 +29,7 @@ describe('PostgresBackend', () => {
 			type: 'postgres',
 			host: 'localhost',
 			port: 5432,
-			database: 'cipher_test',
+			database: 'matrix_test',
 			user: 'postgres',
 			password: 'test',
 		};

@@ -89,16 +89,16 @@ describe('UnifiedToolManager', () => {
 		it('should load internal tools when enabled', async () => {
 			const tools = await unifiedManager.getAllTools();
 
-			// In default mode, only ask_cipher should be available
-			expect(tools['ask_cipher']).toBeDefined();
+			// In default mode, only ask_matrix should be available
+			expect(tools['ask_matrix']).toBeDefined();
 
 			// Internal-only tools should not be accessible to agents in default mode
-			expect(tools['cipher_store_reasoning_memory']).toBeUndefined();
-			expect(tools['cipher_extract_and_operate_memory']).toBeUndefined();
-			expect(tools['cipher_extract_reasoning_steps']).toBeUndefined();
-			expect(tools['cipher_evaluate_reasoning']).toBeUndefined();
+			expect(tools['matrix_store_reasoning_memory']).toBeUndefined();
+			expect(tools['matrix_extract_and_operate_memory']).toBeUndefined();
+			expect(tools['matrix_extract_reasoning_steps']).toBeUndefined();
+			expect(tools['matrix_evaluate_reasoning']).toBeUndefined();
 
-			// Should have 1 tool total in default mode (only ask_cipher)
+			// Should have 1 tool total in default mode (only ask_matrix)
 			expect(Object.keys(tools)).toHaveLength(1);
 
 			// All accessible tools should be marked as internal
@@ -115,13 +115,13 @@ describe('UnifiedToolManager', () => {
 
 			const tools = await manager.getAllTools();
 
-			// In default mode, ask_cipher is hardcoded and always available
+			// In default mode, ask_matrix is hardcoded and always available
 			// even when internal tools are disabled
-			expect(tools['ask_cipher']).toBeDefined();
+			expect(tools['ask_matrix']).toBeDefined();
 			expect(Object.keys(tools)).toHaveLength(1);
 
-			// The ask_cipher tool is marked as internal source
-			expect(tools['ask_cipher']?.source).toBe('internal');
+			// The ask_matrix tool is marked as internal source
+			expect(tools['ask_matrix']?.source).toBe('internal');
 		});
 
 		it('should handle disabled MCP tools', async () => {
@@ -143,15 +143,15 @@ describe('UnifiedToolManager', () => {
 		it('should allow internal-only tools to be executed by system (even if not agent-accessible)', async () => {
 			// Internal-only tools should not be in getAllTools() (not agent-accessible)
 			const tools = await unifiedManager.getAllTools();
-			expect(tools['cipher_store_reasoning_memory']).toBeUndefined();
-			expect(tools['cipher_extract_and_operate_memory']).toBeUndefined();
+			expect(tools['matrix_store_reasoning_memory']).toBeUndefined();
+			expect(tools['matrix_extract_and_operate_memory']).toBeUndefined();
 
 			// But they should still be executable by the system for background processing
-			const extractTool = internalToolManager.getTool('cipher_extract_and_operate_memory');
+			const extractTool = internalToolManager.getTool('matrix_extract_and_operate_memory');
 			expect(extractTool).toBeDefined();
 			expect(extractTool?.agentAccessible).toBe(false); // Internal-only tool
 
-			const reasoningTool = internalToolManager.getTool('cipher_store_reasoning_memory');
+			const reasoningTool = internalToolManager.getTool('matrix_store_reasoning_memory');
 			expect(reasoningTool).toBeDefined();
 			expect(reasoningTool?.agentAccessible).toBe(false);
 		});
@@ -159,7 +159,7 @@ describe('UnifiedToolManager', () => {
 
 	describe('Tool Execution', () => {
 		it('should execute internal tools correctly', async () => {
-			const result = await unifiedManager.executeTool('cipher_extract_and_operate_memory', {
+			const result = await unifiedManager.executeTool('matrix_extract_and_operate_memory', {
 				interaction: [
 					'The API endpoint requires authentication using JWT tokens. The function validates user permissions and handles error responses. Database queries use async operations for better performance.',
 				],
@@ -176,7 +176,7 @@ describe('UnifiedToolManager', () => {
 
 		it('should route tools to correct manager', async () => {
 			// Test internal tool routing
-			const internalResult = await unifiedManager.executeTool('cipher_extract_and_operate_memory', {
+			const internalResult = await unifiedManager.executeTool('matrix_extract_and_operate_memory', {
 				interaction: [
 					'The microservice architecture uses Docker containers for deployment. Redis cache improves API performance and reduces database load.',
 				],
@@ -197,12 +197,12 @@ describe('UnifiedToolManager', () => {
 
 		it('should check tool availability correctly', async () => {
 			// Agent-accessible tools should be available
-			const isAvailable = await unifiedManager.isToolAvailable('ask_cipher');
+			const isAvailable = await unifiedManager.isToolAvailable('ask_matrix');
 			expect(isAvailable).toBe(true);
 
 			// Internal-only tools should not be available to agents
 			const notAvailable = await unifiedManager.isToolAvailable(
-				'cipher_extract_and_operate_memory'
+				'matrix_extract_and_operate_memory'
 			);
 			expect(notAvailable).toBe(false);
 
@@ -217,7 +217,7 @@ describe('UnifiedToolManager', () => {
 
 			expect(Array.isArray(formattedTools)).toBe(true);
 
-			// In default mode, should have 1 tool total (only ask_cipher)
+			// In default mode, should have 1 tool total (only ask_matrix)
 			expect(formattedTools.length).toBe(1);
 
 			// Check OpenAI format
@@ -234,7 +234,7 @@ describe('UnifiedToolManager', () => {
 
 			expect(Array.isArray(formattedTools)).toBe(true);
 
-			// In default mode, should have 1 tool total (only ask_cipher)
+			// In default mode, should have 1 tool total (only ask_matrix)
 			expect(formattedTools.length).toBe(1);
 
 			// Check Anthropic format
@@ -249,7 +249,7 @@ describe('UnifiedToolManager', () => {
 
 			expect(Array.isArray(formattedTools)).toBe(true);
 
-			// In default mode, should have 1 tool total (only ask_cipher)
+			// In default mode, should have 1 tool total (only ask_matrix)
 			expect(formattedTools.length).toBe(1);
 
 			const tool = formattedTools[0];
@@ -260,7 +260,7 @@ describe('UnifiedToolManager', () => {
 		it('should format tools for qwen provider', async () => {
 			const formattedTools = await unifiedManager.getToolsForProvider('qwen');
 
-			// Verify the structure - should have the actual cipher tools
+			// Verify the structure - should have the actual matrix tools
 			expect(Array.isArray(formattedTools)).toBe(true);
 			expect(formattedTools.length).toBeGreaterThan(0);
 
@@ -276,7 +276,7 @@ describe('UnifiedToolManager', () => {
 
 			// Verify at least one of the expected tools is present
 			const toolNames = formattedTools.map(tool => tool.function.name);
-			expect(toolNames).toContain('ask_cipher');
+			expect(toolNames).toContain('ask_matrix');
 		});
 
 		it('should throw error for unsupported provider', async () => {
@@ -334,7 +334,7 @@ describe('UnifiedToolManager', () => {
 				enableInternalTools: false,
 			});
 
-			await expect(manager.executeTool('cipher_extract_knowledge', {})).rejects.toThrow();
+			await expect(manager.executeTool('matrix_extract_knowledge', {})).rejects.toThrow();
 		});
 
 		it('should handle MCP manager errors gracefully', async () => {
@@ -356,12 +356,12 @@ describe('UnifiedToolManager', () => {
 	describe('Tool Source Detection', () => {
 		it('should correctly identify internal tool sources', async () => {
 			// Agent-accessible tools should return 'internal'
-			const source = await unifiedManager.getToolSource('ask_cipher');
+			const source = await unifiedManager.getToolSource('ask_matrix');
 			expect(source).toBe('internal');
 
 			// Internal-only tools should return null (not accessible to agents)
 			const internalSource = await unifiedManager.getToolSource(
-				'cipher_extract_and_operate_memory'
+				'matrix_extract_and_operate_memory'
 			);
 			expect(internalSource).toBe(null);
 		});
@@ -380,7 +380,7 @@ describe('UnifiedToolManager', () => {
 			} as any;
 
 			const manager = new UnifiedToolManager(mcpManager, errorInternalManager);
-			const source = await manager.getToolSource('cipher_test_tool');
+			const source = await manager.getToolSource('matrix_test_tool');
 			expect(source).toBeNull();
 		});
 	});
@@ -398,7 +398,7 @@ describe('UnifiedToolManager', () => {
 			expect(openaiTools.length).toBeGreaterThan(0);
 
 			// 3. Execute a tool
-			const extractResult = await unifiedManager.executeTool('cipher_extract_and_operate_memory', {
+			const extractResult = await unifiedManager.executeTool('matrix_extract_and_operate_memory', {
 				interaction: [
 					'The REST API implements OAuth authentication for secure access. JSON Web Tokens validate user sessions and handle authorization.',
 				],

@@ -16,7 +16,7 @@ if (isMcpMode) {
 
 const envSchema = z.object({
 	NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-	CIPHER_LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug', 'silly']).default('info'),
+	MATRIX_LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug', 'silly']).default('info'),
 	REDACT_SECRETS: z.boolean().default(true),
 	OPENAI_API_KEY: z.string().optional(),
 	ANTHROPIC_API_KEY: z.string().optional(),
@@ -46,7 +46,7 @@ const envSchema = z.object({
 	STORAGE_DATABASE_PATH: z.string().optional(),
 	STORAGE_DATABASE_NAME: z.string().optional(),
 	// PostgreSQL Configuration
-	CIPHER_PG_URL: z.string().optional(),
+	MATRIX_PG_URL: z.string().optional(),
 	STORAGE_DATABASE_HOST: z.string().optional(),
 	STORAGE_DATABASE_PORT: z.number().optional(),
 	STORAGE_DATABASE_USER: z.string().optional(),
@@ -102,8 +102,8 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 		switch (prop) {
 			case 'NODE_ENV':
 				return process.env.NODE_ENV || 'development';
-			case 'CIPHER_LOG_LEVEL':
-				return process.env.CIPHER_LOG_LEVEL || 'info';
+			case 'MATRIX_LOG_LEVEL':
+				return process.env.MATRIX_LOG_LEVEL || 'info';
 			case 'REDACT_SECRETS':
 				return process.env.REDACT_SECRETS === 'false' ? false : true;
 			case 'OPENAI_API_KEY':
@@ -167,8 +167,8 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 			case 'STORAGE_DATABASE_NAME':
 				return process.env.STORAGE_DATABASE_NAME;
 			// PostgreSQL Configuration
-			case 'CIPHER_PG_URL':
-				return process.env.CIPHER_PG_URL;
+			case 'MATRIX_PG_URL':
+				return process.env.MATRIX_PG_URL;
 			case 'STORAGE_DATABASE_HOST':
 				return process.env.STORAGE_DATABASE_HOST;
 			case 'STORAGE_DATABASE_PORT':
@@ -292,7 +292,7 @@ export const validateEnv = () => {
 			const errorMsg =
 				'No embedding provider configured. Set one of: OPENAI_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY, OLLAMA_BASE_URL, or set DISABLE_EMBEDDINGS=true to run without memory capabilities';
 			if (isMcpMode) {
-				process.stderr.write(`[CIPHER-MCP] WARNING: ${errorMsg}\n`);
+				process.stderr.write(`[MATRIX-MCP] WARNING: ${errorMsg}\n`);
 			} else {
 				console.warn(errorMsg);
 			}
@@ -300,9 +300,9 @@ export const validateEnv = () => {
 		}
 	} else {
 		// Embeddings are disabled, log this for clarity
-		const infoMsg = 'Embeddings are disabled - Cipher will run without memory capabilities';
+		const infoMsg = 'Embeddings are disabled - Matrix will run without memory capabilities';
 		if (isMcpMode) {
-			process.stderr.write(`[CIPHER-MCP] INFO: ${infoMsg}\n`);
+			process.stderr.write(`[MATRIX-MCP] INFO: ${infoMsg}\n`);
 		} else {
 			console.info(infoMsg);
 		}
@@ -311,7 +311,7 @@ export const validateEnv = () => {
 	// Get current env values for validation
 	const envToValidate = {
 		NODE_ENV: process.env.NODE_ENV,
-		CIPHER_LOG_LEVEL: process.env.CIPHER_LOG_LEVEL,
+		MATRIX_LOG_LEVEL: process.env.MATRIX_LOG_LEVEL,
 		REDACT_SECRETS: process.env.REDACT_SECRETS === 'false' ? false : true,
 		OPENAI_API_KEY: process.env.OPENAI_API_KEY,
 		ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
@@ -350,7 +350,7 @@ export const validateEnv = () => {
 		STORAGE_DATABASE_PATH: process.env.STORAGE_DATABASE_PATH,
 		STORAGE_DATABASE_NAME: process.env.STORAGE_DATABASE_NAME,
 		// PostgreSQL Configuration
-		CIPHER_PG_URL: process.env.CIPHER_PG_URL,
+		MATRIX_PG_URL: process.env.MATRIX_PG_URL,
 		STORAGE_DATABASE_HOST: process.env.STORAGE_DATABASE_HOST,
 		STORAGE_DATABASE_PORT: process.env.STORAGE_DATABASE_PORT
 			? parseInt(process.env.STORAGE_DATABASE_PORT, 10)
@@ -401,7 +401,7 @@ export const validateEnv = () => {
 		// Note: logger might not be available during early initialization
 		const errorMsg = `Environment validation failed: ${JSON.stringify(result.error.issues)}`;
 		if (isMcpMode) {
-			process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
+			process.stderr.write(`[MATRIX-MCP] ERROR: ${errorMsg}\n`);
 		} else {
 			console.error('Environment validation failed:', result.error.issues);
 		}

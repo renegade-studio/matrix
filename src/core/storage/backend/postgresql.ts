@@ -70,43 +70,43 @@ export class PostgresBackend implements DatabaseBackend {
 	 * Initialize prepared statement definitions
 	 */
 	private initializeStatements(): void {
-		this.statements.set('get', 'SELECT value FROM cipher_store WHERE key = $1');
+		this.statements.set('get', 'SELECT value FROM matrix_store WHERE key = $1');
 		this.statements.set(
 			'set',
 			`
-			INSERT INTO cipher_store (key, value, created_at, updated_at)
+			INSERT INTO matrix_store (key, value, created_at, updated_at)
 			VALUES ($1, $2, $3, $4)
 			ON CONFLICT (key) DO UPDATE SET
 				value = EXCLUDED.value,
 				updated_at = EXCLUDED.updated_at
 		`
 		);
-		this.statements.set('delete', 'DELETE FROM cipher_store WHERE key = $1');
-		this.statements.set('list', 'SELECT key FROM cipher_store WHERE key LIKE $1 ORDER BY key');
+		this.statements.set('delete', 'DELETE FROM matrix_store WHERE key = $1');
+		this.statements.set('list', 'SELECT key FROM matrix_store WHERE key LIKE $1 ORDER BY key');
 		this.statements.set(
 			'listAppend',
 			`
-			INSERT INTO cipher_lists (key, value, position, created_at)
-			VALUES ($1, $2, COALESCE((SELECT MAX(position) + 1 FROM cipher_lists WHERE key = $1), 0), $3)
+			INSERT INTO matrix_lists (key, value, position, created_at)
+			VALUES ($1, $2, COALESCE((SELECT MAX(position) + 1 FROM matrix_lists WHERE key = $1), 0), $3)
 		`
 		);
 		this.statements.set(
 			'getRange',
 			`
-			SELECT value FROM cipher_lists
+			SELECT value FROM matrix_lists
 			WHERE key = $1
 			ORDER BY position
 			LIMIT $2 OFFSET $3
 		`
 		);
-		this.statements.set('deleteList', 'DELETE FROM cipher_lists WHERE key = $1');
+		this.statements.set('deleteList', 'DELETE FROM matrix_lists WHERE key = $1');
 		this.statements.set(
 			'updateListMetadata',
 			`
-			INSERT INTO cipher_list_metadata (key, count, created_at, updated_at)
-			VALUES ($1, (SELECT COUNT(*) FROM cipher_lists WHERE key = $1), $2, $3)
+			INSERT INTO matrix_list_metadata (key, count, created_at, updated_at)
+			VALUES ($1, (SELECT COUNT(*) FROM matrix_lists WHERE key = $1), $2, $3)
 			ON CONFLICT (key) DO UPDATE SET
-				count = (SELECT COUNT(*) FROM cipher_lists WHERE key = $1),
+				count = (SELECT COUNT(*) FROM matrix_lists WHERE key = $1),
 				updated_at = EXCLUDED.updated_at
 		`
 		);
@@ -380,9 +380,9 @@ export class PostgresBackend implements DatabaseBackend {
 			this.logger.info('Running PostgreSQL maintenance');
 
 			// Analyze tables for query optimization
-			await this.pool!.query('ANALYZE cipher_store');
-			await this.pool!.query('ANALYZE cipher_lists');
-			await this.pool!.query('ANALYZE cipher_list_metadata');
+			await this.pool!.query('ANALYZE matrix_store');
+			await this.pool!.query('ANALYZE matrix_lists');
+			await this.pool!.query('ANALYZE matrix_list_metadata');
 
 			this.logger.info('PostgreSQL maintenance completed successfully');
 		} catch (error) {
@@ -440,7 +440,7 @@ export class PostgresBackend implements DatabaseBackend {
 
 		// Key-value store table
 		await this.pool.query(`
-			CREATE TABLE IF NOT EXISTS cipher_store (
+			CREATE TABLE IF NOT EXISTS matrix_store (
 				key TEXT PRIMARY KEY,
 				value TEXT NOT NULL,
 				created_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -450,7 +450,7 @@ export class PostgresBackend implements DatabaseBackend {
 
 		// Lists table for list operations
 		await this.pool.query(`
-			CREATE TABLE IF NOT EXISTS cipher_lists (
+			CREATE TABLE IF NOT EXISTS matrix_lists (
 				key TEXT NOT NULL,
 				value TEXT NOT NULL,
 				position INTEGER NOT NULL,
@@ -461,7 +461,7 @@ export class PostgresBackend implements DatabaseBackend {
 
 		// List metadata table
 		await this.pool.query(`
-			CREATE TABLE IF NOT EXISTS cipher_list_metadata (
+			CREATE TABLE IF NOT EXISTS matrix_list_metadata (
 				key TEXT PRIMARY KEY,
 				count INTEGER NOT NULL DEFAULT 0,
 				created_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -471,11 +471,11 @@ export class PostgresBackend implements DatabaseBackend {
 
 		// Create indexes for performance
 		await this.pool.query(
-			'CREATE INDEX IF NOT EXISTS idx_cipher_store_updated_at ON cipher_store(updated_at)'
+			'CREATE INDEX IF NOT EXISTS idx_matrix_store_updated_at ON matrix_store(updated_at)'
 		);
-		await this.pool.query('CREATE INDEX IF NOT EXISTS idx_cipher_lists_key ON cipher_lists(key)');
+		await this.pool.query('CREATE INDEX IF NOT EXISTS idx_matrix_lists_key ON matrix_lists(key)');
 		await this.pool.query(
-			'CREATE INDEX IF NOT EXISTS idx_cipher_lists_created_at ON cipher_lists(created_at)'
+			'CREATE INDEX IF NOT EXISTS idx_matrix_lists_created_at ON matrix_lists(created_at)'
 		);
 
 		this.logger.debug('PostgreSQL tables and indexes created');

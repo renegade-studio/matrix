@@ -62,7 +62,7 @@ export class DualCollectionVectorManager {
 
 	constructor(baseConfig: VectorStoreConfig) {
 		this.logger = createLogger({
-			level: env.CIPHER_LOG_LEVEL || 'info',
+			level: env.MATRIX_LOG_LEVEL || 'info',
 		});
 
 		// Check if reflection memory is enabled (based on collection name being set and not empty)

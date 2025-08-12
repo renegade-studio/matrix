@@ -75,7 +75,7 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 	await _initCli(agent);
 	await _initializeSessionAndCompression(agent);
 
-	console.log(chalk.cyan('🚀 Welcome to Cipher Interactive CLI!'));
+	console.log(chalk.cyan('🚀 Welcome to Matrix Interactive CLI!'));
 	console.log(chalk.gray('Your memory-powered coding assistant is ready.'));
 	console.log(chalk.gray('• Type /help to see available commands'));
 	console.log(chalk.gray('• Use /exit or /quit to end the session'));
@@ -84,7 +84,7 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 	const rl = readline.createInterface({
 		input: process.stdin,
 		output: process.stdout,
-		prompt: chalk.blue('cipher> '),
+		prompt: chalk.blue('matrix> '),
 	});
 
 	// Set up graceful shutdown
@@ -149,7 +149,7 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 				// At info log level, display prompt immediately and let background operations run silently
 				if (result && result.backgroundOperations) {
 					// Check if we're at info log level or higher (info level = 2, anything higher means less verbose)
-					const currentLogLevel = process.env.CIPHER_LOG_LEVEL || 'info';
+					const currentLogLevel = process.env.MATRIX_LOG_LEVEL || 'info';
 					const isInfoLevelOrHigher = ['error', 'warn', 'info'].includes(currentLogLevel);
 
 					if (isInfoLevelOrHigher) {
@@ -216,7 +216,7 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					// At info log level, display prompt immediately and let background operations run silently
 					if (result && result.backgroundOperations) {
 						// Check if we're at info log level or higher (info level = 2, anything higher means less verbose)
-						const currentLogLevel = process.env.CIPHER_LOG_LEVEL || 'info';
+						const currentLogLevel = process.env.MATRIX_LOG_LEVEL || 'info';
 						const isInfoLevelOrHigher = ['error', 'warn', 'info'].includes(currentLogLevel);
 
 						if (isInfoLevelOrHigher) {
@@ -293,7 +293,7 @@ export async function startMcpMode(agent: MemAgent): Promise<void> {
 }
 
 /**
- * Start the default MCP server mode with ask_cipher tool
+ * Start the default MCP server mode with ask_matrix tool
  */
 async function startDefaultMcpMode(agent: MemAgent): Promise<void> {
 	// Import MCP handler functions
@@ -321,7 +321,7 @@ async function startDefaultMcpMode(agent: MemAgent): Promise<void> {
 	await server.connect(mcpTransport.server);
 
 	// Server is now running - keep process alive
-	logger.info('[MCP Mode] Cipher agent is now running as default MCP server');
+	logger.info('[MCP Mode] Matrix agent is now running as default MCP server');
 	process.stdin.resume();
 }
 
@@ -357,13 +357,13 @@ async function startAggregatorMode(agent: MemAgent): Promise<void> {
 	await server.connect(mcpTransport.server);
 
 	// Server is now running - keep process alive
-	logger.info('[MCP Mode] Cipher is now running as aggregator MCP server');
+	logger.info('[MCP Mode] Matrix is now running as aggregator MCP server');
 	process.stdin.resume();
 }
 
 /**
  * Load aggregator configuration from environment variables
- * Aggregator mode now uses agent's unifiedToolManager which automatically includes MCP servers from cipher.yml
+ * Aggregator mode now uses agent's unifiedToolManager which automatically includes MCP servers from matrix.yml
  */
 async function loadAggregatorConfig(): Promise<AggregatorConfig> {
 	const defaultConfig: AggregatorConfig = {

@@ -40,17 +40,17 @@ FROM node:${NODE_VERSION}-alpine AS production
 WORKDIR /app
 
 # Create non-root user
-RUN addgroup -g 1001 -S cipher && adduser -S cipher -u 1001
+RUN addgroup -g 1001 -S matrix && adduser -S matrix -u 1001
 
-# Create .cipher directory with proper permissions for database
-RUN mkdir -p /app/.cipher/database && \
-    chown -R cipher:cipher /app/.cipher
+# Create .matrix directory with proper permissions for database
+RUN mkdir -p /app/.matrix/database && \
+    chown -R matrix:matrix /app/.matrix
 
 # Copy only essential production files
-COPY --from=builder --chown=cipher:cipher /app/dist ./dist
-COPY --from=builder --chown=cipher:cipher /app/node_modules ./node_modules
-COPY --from=builder --chown=cipher:cipher /app/package.json ./
-COPY --from=builder --chown=cipher:cipher /app/memAgent ./memAgent
+COPY --from=builder --chown=matrix:matrix /app/dist ./dist
+COPY --from=builder --chown=matrix:matrix /app/node_modules ./node_modules
+COPY --from=builder --chown=matrix:matrix /app/package.json ./
+COPY --from=builder --chown=matrix:matrix /app/memAgent ./memAgent
 
 # Create a minimal .env file for Docker (environment variables will be passed via docker)
 RUN echo "# Docker environment - variables passed via docker run" > .env
@@ -58,10 +58,10 @@ RUN echo "# Docker environment - variables passed via docker run" > .env
 # Environment variables
 ENV NODE_ENV=production \
     PORT=3000 \
-    CONFIG_FILE=/app/memAgent/cipher.yml
+    CONFIG_FILE=/app/memAgent/matrix.yml
 
 # Switch to non-root user
-USER cipher
+USER matrix
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

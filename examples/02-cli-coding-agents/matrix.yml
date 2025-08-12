@@ -126,8 +126,8 @@ agentCard:
     - "Cross-session learning"
     - "File system integration"
   provider:
-    organization: "Cipher Development"
-    url: "https://docs.byterover.dev/cipher"
+    organization: "Matrix Development"
+    url: "https://docs.byterover.dev/matrix"
 
 # Performance Tuning for CLI Usage
 performance:

@@ -299,8 +299,8 @@ export class EventReplay {
 	}
 
 	private isServiceEvent(eventType: string): boolean {
-		// Service events typically start with 'cipher:' prefix
-		return eventType.startsWith('cipher:');
+		// Service events typically start with 'matrix:' prefix
+		return eventType.startsWith('matrix:');
 	}
 
 	private isSessionEvent(eventType: string): boolean {

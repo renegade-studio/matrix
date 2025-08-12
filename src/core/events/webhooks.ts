@@ -212,7 +212,7 @@ export class WebhookForwarder {
 
 		const testEvent: EventEnvelope = {
 			id: `test-${Date.now()}`,
-			type: 'cipher:test',
+			type: 'matrix:test',
 			data: { message: 'Webhook connectivity test', timestamp: Date.now() },
 			metadata: { timestamp: Date.now(), source: 'webhook-test' },
 		};
@@ -296,7 +296,7 @@ export class WebhookForwarder {
 		// Create batch event
 		const batchEvent: EventEnvelope = {
 			id: `batch-${Date.now()}`,
-			type: 'cipher:batch',
+			type: 'matrix:batch',
 			data: { events: batch, count: batch.length },
 			metadata: { timestamp: Date.now(), source: 'batch' },
 		};

@@ -44,8 +44,8 @@ export interface UnifiedToolManagerConfig {
 
 	/**
 	 * Operating mode - affects which tools are exposed
-	 * - 'cli': Only search tools exposed to Cipher's LLM (background tools still executable)
-	 * - 'default': Only ask_cipher tool exposed to external MCP clients
+	 * - 'cli': Only search tools exposed to Matrix's LLM (background tools still executable)
+	 * - 'default': Only ask_matrix tool exposed to external MCP clients
 	 * - 'aggregator': All tools exposed to external MCP clients
 	 * - 'api': Similar to CLI mode
 	 * @default 'default'
@@ -131,10 +131,10 @@ export class UnifiedToolManager {
 			'vector_search',
 			'embedding',
 			'similarity',
-			'cipher_search_memory',
-			'cipher_search_reasoning_patterns',
-			'cipher_store_reasoning_memory',
-			'cipher_extract_and_operate_memory',
+			'matrix_search_memory',
+			'matrix_search_reasoning_patterns',
+			'matrix_store_reasoning_memory',
+			'matrix_extract_and_operate_memory',
 		];
 
 		return embeddingToolPatterns.some(pattern =>
@@ -146,7 +146,7 @@ export class UnifiedToolManager {
 	 * Get all available tools from both sources
 	 * Filters tools based on mode:
 	 * - CLI mode: Only search tools + MCP tools (background tools excluded from agent access)
-	 * - Default MCP mode: Only ask_cipher tool
+	 * - Default MCP mode: Only ask_matrix tool
 	 * - Aggregator MCP mode: All tools
 	 */
 	async getAllTools(): Promise<CombinedToolSet> {
@@ -156,24 +156,24 @@ export class UnifiedToolManager {
 		const combinedTools: CombinedToolSet = {};
 
 		try {
-			// MCP Default mode: Only expose ask_cipher tool
+			// MCP Default mode: Only expose ask_matrix tool
 			if (this.config.mode === 'default') {
-				// TODO: Add ask_cipher tool implementation
-				combinedTools['ask_cipher'] = {
-					description: 'Ask Cipher to perform tasks using its internal tools and capabilities',
+				// TODO: Add ask_matrix tool implementation
+				combinedTools['ask_matrix'] = {
+					description: 'Ask Matrix to perform tasks using its internal tools and capabilities',
 					parameters: {
 						type: 'object',
 						properties: {
 							query: {
 								type: 'string',
-								description: 'The task or question to ask Cipher',
+								description: 'The task or question to ask Matrix',
 							},
 						},
 						required: ['query'],
 					},
 					source: 'internal',
 				};
-				logger.debug('UnifiedToolManager: Default MCP mode - only ask_cipher tool exposed');
+				logger.debug('UnifiedToolManager: Default MCP mode - only ask_matrix tool exposed');
 				return combinedTools;
 			}
 
@@ -238,7 +238,7 @@ export class UnifiedToolManager {
 								toolName.includes('knowledge_') ||
 								toolName.includes('vector_') ||
 								toolName === 'extract_and_operate_memory' ||
-								toolName === 'cipher_extract_and_operate_memory';
+								toolName === 'matrix_extract_and_operate_memory';
 
 							if (!isSearchTool && tool.agentAccessible === false) {
 								// Skip background tools in CLI mode - they will be executed after AI response
@@ -261,7 +261,7 @@ export class UnifiedToolManager {
 							}
 						}
 
-						const normalizedName = toolName.startsWith('cipher_') ? toolName : `cipher_${toolName}`;
+						const normalizedName = toolName.startsWith('matrix_') ? toolName : `matrix_${toolName}`;
 
 						// Handle conflicts
 						if (combinedTools[normalizedName]) {
@@ -512,9 +512,9 @@ export class UnifiedToolManager {
 	 */
 	async isToolAvailable(toolName: string): Promise<boolean> {
 		try {
-			// Default MCP mode: Only ask_cipher tool available
+			// Default MCP mode: Only ask_matrix tool available
 			if (this.config.mode === 'default') {
-				return toolName === 'ask_cipher';
+				return toolName === 'ask_matrix';
 			}
 
 			if (this.config.enableInternalTools && isInternalToolName(toolName)) {
@@ -531,7 +531,7 @@ export class UnifiedToolManager {
 						toolName.includes('knowledge_') ||
 						toolName.includes('vector_') ||
 						toolName === 'extract_and_operate_memory' ||
-						toolName === 'cipher_extract_and_operate_memory';
+						toolName === 'matrix_extract_and_operate_memory';
 
 					return isSearchTool && tool.agentAccessible !== false;
 				} else if (this.config.mode === 'aggregator') {
@@ -564,9 +564,9 @@ export class UnifiedToolManager {
 	 */
 	async getToolSource(toolName: string): Promise<'internal' | 'mcp' | null> {
 		try {
-			// Default MCP mode: Only ask_cipher tool
+			// Default MCP mode: Only ask_matrix tool
 			if (this.config.mode === 'default') {
-				return toolName === 'ask_cipher' ? 'internal' : null;
+				return toolName === 'ask_matrix' ? 'internal' : null;
 			}
 
 			if (this.config.enableInternalTools && isInternalToolName(toolName)) {
@@ -583,7 +583,7 @@ export class UnifiedToolManager {
 						toolName.includes('knowledge_') ||
 						toolName.includes('vector_') ||
 						toolName === 'extract_and_operate_memory' ||
-						toolName === 'cipher_extract_and_operate_memory';
+						toolName === 'matrix_extract_and_operate_memory';
 
 					return isSearchTool && tool.agentAccessible !== false ? 'internal' : null;
 				} else if (this.config.mode === 'aggregator') {
@@ -678,7 +678,7 @@ export class UnifiedToolManager {
 	): boolean {
 		switch (this.config.conflictResolution) {
 			case 'prefix-internal':
-				// Tool already has cipher_ prefix, so conflict shouldn't occur
+				// Tool already has matrix_ prefix, so conflict shouldn't occur
 				return true;
 
 			case 'prefer-internal':

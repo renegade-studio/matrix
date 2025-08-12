@@ -400,7 +400,7 @@ describe('ConversationSession', () => {
 			await session.run(input, undefined, undefined, { memoryMetadata });
 
 			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
-				'cipher_extract_and_operate_memory',
+				'matrix_extract_and_operate_memory',
 				expect.objectContaining({
 					memoryMetadata: expect.objectContaining({
 						sessionId: 'override-session',
@@ -414,7 +414,7 @@ describe('ConversationSession', () => {
 			// Also test session-level only (no per-run override)
 			await session.run(input);
 			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
-				'cipher_extract_and_operate_memory',
+				'matrix_extract_and_operate_memory',
 				expect.objectContaining({
 					memoryMetadata: expect.objectContaining({
 						sessionId: 'session-meta',
@@ -446,7 +446,7 @@ describe('ConversationSession', () => {
 			await session.run(input, undefined, undefined, { memoryMetadata: invalidMetadata as any });
 
 			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
-				'cipher_extract_and_operate_memory',
+				'matrix_extract_and_operate_memory',
 				expect.objectContaining({
 					memoryMetadata: expect.objectContaining({
 						sessionId: sessionId,
@@ -475,7 +475,7 @@ describe('ConversationSession', () => {
 			const memoryMetadata = { only: 'perRun', foo: 'bar' };
 			await session.run(input, undefined, undefined, { memoryMetadata });
 			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
-				'cipher_extract_and_operate_memory',
+				'matrix_extract_and_operate_memory',
 				expect.objectContaining({
 					memoryMetadata: expect.objectContaining({
 						only: 'perRun',
@@ -505,7 +505,7 @@ describe('ConversationSession', () => {
 			mockLLMService.generate.mockResolvedValue(expectedResponse);
 			await session.run(input);
 			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
-				'cipher_extract_and_operate_memory',
+				'matrix_extract_and_operate_memory',
 				expect.objectContaining({
 					memoryMetadata: expect.objectContaining({
 						sessionId: sessionId,
@@ -929,7 +929,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 			memoryMetadata: { foo: 'baz', custom: 123 },
 		});
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
-			'cipher_extract_and_operate_memory',
+			'matrix_extract_and_operate_memory',
 			expect.objectContaining({
 				memoryMetadata: expect.objectContaining({
 					foo: 'baz', // per-run
@@ -964,7 +964,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 		mockLLMService.generate.mockResolvedValue('ok');
 		await session.run('input', undefined, undefined, { memoryMetadata: { b: 2 } });
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
-			'cipher_extract_and_operate_memory',
+			'matrix_extract_and_operate_memory',
 			expect.objectContaining({
 				memoryMetadata: expect.objectContaining({ a: 1, b: 2, merged: true }),
 			})
@@ -989,7 +989,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 		// Valid
 		await session.run('input', undefined, undefined, { memoryMetadata: { foo: 'baz' } });
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
-			'cipher_extract_and_operate_memory',
+			'matrix_extract_and_operate_memory',
 			expect.objectContaining({
 				memoryMetadata: expect.objectContaining({ foo: 'baz' }),
 			})
@@ -997,7 +997,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 		// Invalid (should fallback to session-level)
 		await session.run('input', undefined, undefined, { memoryMetadata: { foo: 123 as any } });
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
-			'cipher_extract_and_operate_memory',
+			'matrix_extract_and_operate_memory',
 			expect.objectContaining({
 				memoryMetadata: expect.objectContaining({ foo: 'bar', valid: true }),
 			})
@@ -1047,7 +1047,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 		session.updateSessionMetadata({ foo: 'baz', newKey: 42 });
 		await session.run('input');
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
-			'cipher_extract_and_operate_memory',
+			'matrix_extract_and_operate_memory',
 			expect.objectContaining({
 				memoryMetadata: expect.objectContaining({ foo: 'baz', newKey: 42 }),
 			})
@@ -1070,7 +1070,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 		mockLLMService.generate.mockResolvedValue('ok');
 		await session.run('input', undefined, undefined, { memoryMetadata: 'not-an-object' as any });
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
-			'cipher_extract_and_operate_memory',
+			'matrix_extract_and_operate_memory',
 			expect.objectContaining({
 				memoryMetadata: expect.objectContaining({ foo: 'bar' }),
 			})
@@ -1092,7 +1092,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 		mockLLMService.generate.mockResolvedValue('ok');
 		await session.run('input');
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
-			'cipher_extract_and_operate_memory',
+			'matrix_extract_and_operate_memory',
 			expect.objectContaining({
 				memoryMetadata: expect.objectContaining({
 					sessionId: sessionId,

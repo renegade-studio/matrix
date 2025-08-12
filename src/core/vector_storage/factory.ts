@@ -80,7 +80,7 @@ export interface DualCollectionVectorFactory {
  * ```
  */
 export async function createVectorStore(config: VectorStoreConfig): Promise<VectorStoreFactory> {
-	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
+	const logger = createLogger({ level: env.MATRIX_LOG_LEVEL });
 
 	logger.debug(`${LOG_PREFIXES.FACTORY} Creating vector storage system`, {
 		type: config.type,
@@ -179,7 +179,7 @@ export async function createDefaultVectorStore(
  * ```
  */
 export async function createVectorStoreFromEnv(agentConfig?: any): Promise<VectorStoreFactory> {
-	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
+	const logger = createLogger({ level: env.MATRIX_LOG_LEVEL });
 
 	// Get configuration from environment variables
 	const config = getVectorStoreConfigFromEnv(agentConfig);
@@ -216,7 +216,7 @@ export async function createVectorStoreFromEnv(agentConfig?: any): Promise<Vecto
 export async function createDualCollectionVectorStoreFromEnv(
 	agentConfig?: any
 ): Promise<DualCollectionVectorFactory> {
-	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
+	const logger = createLogger({ level: env.MATRIX_LOG_LEVEL });
 
 	// Get base configuration from environment variables
 	const config = getVectorStoreConfigFromEnv(agentConfig);
@@ -320,7 +320,7 @@ async function createDualCollectionVectorStoreInternal(
  * ```
  */
 export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfig {
-	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
+	const logger = createLogger({ level: env.MATRIX_LOG_LEVEL });
 
 	// Get configuration from centralized env object with fallbacks for invalid values
 	const storeType = env.VECTOR_STORE_TYPE;

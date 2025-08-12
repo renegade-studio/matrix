@@ -610,7 +610,7 @@ export class SessionManager {
 		logger.info('SessionManager: Initializing persistence storage...');
 
 		// Check for PostgreSQL environment variables
-		const postgresUrl = process.env.CIPHER_PG_URL;
+		const postgresUrl = process.env.MATRIX_PG_URL;
 		const postgresHost = process.env.STORAGE_DATABASE_HOST;
 		const postgresDatabase = process.env.STORAGE_DATABASE_NAME;
 
@@ -682,7 +682,7 @@ export class SessionManager {
 				database: {
 					type: 'sqlite',
 					path: './data',
-					database: 'cipher-sessions.db',
+					database: 'matrix-sessions.db',
 				},
 				cache: {
 					type: 'in-memory',

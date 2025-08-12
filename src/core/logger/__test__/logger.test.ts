@@ -12,7 +12,7 @@ beforeAll(() => {
 // Ensure clean environment between tests
 beforeEach(() => {
 	// Reset environment variables
-	delete process.env.CIPHER_LOG_LEVEL;
+	delete process.env.MATRIX_LOG_LEVEL;
 	delete process.env.REDACT_SECRETS;
 
 	// Reset mocks but don't restore them (faster than full restore)
@@ -27,29 +27,29 @@ describe.concurrent('Logger Core Functionality', () => {
 			expect(testLogger.getLevel()).toBe('info');
 		});
 
-		it('respects CIPHER_LOG_LEVEL environment variable', () => {
-			const originalLevel = process.env.CIPHER_LOG_LEVEL;
-			process.env.CIPHER_LOG_LEVEL = 'debug';
+		it('respects MATRIX_LOG_LEVEL environment variable', () => {
+			const originalLevel = process.env.MATRIX_LOG_LEVEL;
+			process.env.MATRIX_LOG_LEVEL = 'debug';
 			const testLogger = new Logger();
 			expect(testLogger.getLevel()).toBe('debug');
 			// Restore original level
 			if (originalLevel === undefined) {
-				delete process.env.CIPHER_LOG_LEVEL;
+				delete process.env.MATRIX_LOG_LEVEL;
 			} else {
-				process.env.CIPHER_LOG_LEVEL = originalLevel;
+				process.env.MATRIX_LOG_LEVEL = originalLevel;
 			}
 		});
 
-		it('ignores invalid CIPHER_LOG_LEVEL and falls back to info', () => {
-			const originalLevel = process.env.CIPHER_LOG_LEVEL;
-			process.env.CIPHER_LOG_LEVEL = 'invalid_level';
+		it('ignores invalid MATRIX_LOG_LEVEL and falls back to info', () => {
+			const originalLevel = process.env.MATRIX_LOG_LEVEL;
+			process.env.MATRIX_LOG_LEVEL = 'invalid_level';
 			const testLogger = new Logger();
 			expect(testLogger.getLevel()).toBe('info');
 			// Restore original level
 			if (originalLevel === undefined) {
-				delete process.env.CIPHER_LOG_LEVEL;
+				delete process.env.MATRIX_LOG_LEVEL;
 			} else {
-				process.env.CIPHER_LOG_LEVEL = originalLevel;
+				process.env.MATRIX_LOG_LEVEL = originalLevel;
 			}
 		});
 
@@ -312,13 +312,13 @@ describe.concurrent('Environment Variable Support', () => {
 		const validLevels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
 
 		// Cache the original env vars
-		const originalLogLevel = process.env.CIPHER_LOG_LEVEL;
+		const originalLogLevel = process.env.MATRIX_LOG_LEVEL;
 		const originalRedactSecrets = process.env.REDACT_SECRETS;
 
 		try {
 			// Test all log levels in a batch
 			validLevels.forEach(level => {
-				process.env.CIPHER_LOG_LEVEL = level;
+				process.env.MATRIX_LOG_LEVEL = level;
 				const testLogger = new Logger();
 				expect(testLogger.getLevel()).toBe(level);
 			});
@@ -330,9 +330,9 @@ describe.concurrent('Environment Variable Support', () => {
 		} finally {
 			// Restore original env vars instead of deleting
 			if (originalLogLevel === undefined) {
-				delete process.env.CIPHER_LOG_LEVEL;
+				delete process.env.MATRIX_LOG_LEVEL;
 			} else {
-				process.env.CIPHER_LOG_LEVEL = originalLogLevel;
+				process.env.MATRIX_LOG_LEVEL = originalLogLevel;
 			}
 
 			if (originalRedactSecrets === undefined) {

@@ -73,7 +73,7 @@ export interface KnowledgeGraphFactory {
 export async function createKnowledgeGraph(
 	config: KnowledgeGraphConfig
 ): Promise<KnowledgeGraphFactory> {
-	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
+	const logger = createLogger({ level: env.MATRIX_LOG_LEVEL });
 
 	logger.debug(`${LOG_PREFIXES.FACTORY} Creating knowledge graph system`, {
 		type: config.type,
@@ -193,7 +193,7 @@ export async function createDefaultKnowledgeGraph(
  * ```
  */
 export async function createKnowledgeGraphFromEnv(): Promise<KnowledgeGraphFactory | null> {
-	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
+	const logger = createLogger({ level: env.MATRIX_LOG_LEVEL });
 
 	// Get configuration from environment variables
 	const config = parseKnowledgeGraphConfigFromEnv();

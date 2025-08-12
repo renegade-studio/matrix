@@ -93,7 +93,7 @@ const fileFormat = winston.format.printf(({ level, message, timestamp }) => {
 // ===== 4. Configuration Layer =====
 
 const getDefaultLogLevel = (): string => {
-	const envLevel = env.CIPHER_LOG_LEVEL;
+	const envLevel = env.MATRIX_LOG_LEVEL;
 	if (envLevel && Object.keys(logLevels).includes(envLevel.toLowerCase())) {
 		return envLevel.toLowerCase();
 	}

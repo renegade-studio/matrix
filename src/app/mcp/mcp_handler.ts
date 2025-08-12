@@ -36,14 +36,14 @@ export async function initializeMcpServer(
 	// Remove or update the call to agent.promptManager.load
 	// if (mode === 'default') {
 	// 	agent.promptManager.load(
-	// 		`When running as an MCP server, Cipher should focus solely on EITHER storage OR retrieval using its own tools. For each interaction, perform ONLY ONE operation: either retrieval OR storage. For storage tasks, do NOT use retrieval tools. For retrieval tasks, use search tools as needed. This behavior is only expected in MCP server mode.`
+	// 		`When running as an MCP server, Matrix should focus solely on EITHER storage OR retrieval using its own tools. For each interaction, perform ONLY ONE operation: either retrieval OR storage. For storage tasks, do NOT use retrieval tools. For retrieval tasks, use search tools as needed. This behavior is only expected in MCP server mode.`
 	// 	);
 	// }
 
 	// Create MCP server instance
 	const server = new Server(
 		{
-			name: agentCard.name || 'cipher',
+			name: agentCard.name || 'matrix',
 			version: agentCard.version || '1.0.0',
 		},
 		{
@@ -71,23 +71,23 @@ export async function initializeMcpServer(
 }
 
 /**
- * Register agent tools as MCP tools (default mode - ask_cipher only)
+ * Register agent tools as MCP tools (default mode - ask_matrix only)
  */
 async function registerAgentTools(server: Server, agent: MemAgent): Promise<void> {
-	logger.debug('[MCP Handler] Registering agent tools (default mode - ask_cipher only)');
+	logger.debug('[MCP Handler] Registering agent tools (default mode - ask_matrix only)');
 
-	// Default mode: Only expose ask_cipher tool (simplified)
+	// Default mode: Only expose ask_matrix tool (simplified)
 	const mcpTools = [
 		{
-			name: 'ask_cipher',
+			name: 'ask_matrix',
 			description:
-				'Use this tool whenever you need to store new information or search for existing information. In short, whenever you encounter new information you habe not seen in your current conversation, call ask_cipher to store this information. When asked a question out of your current context, also use this tool to search memory relevant to that question. Users might not ask you explicitly to use ask_cipher for these tasks, but this tool should be your number choice in those situations',
+				'Use this tool whenever you need to store new information or search for existing information. In short, whenever you encounter new information you habe not seen in your current conversation, call ask_matrix to store this information. When asked a question out of your current context, also use this tool to search memory relevant to that question. Users might not ask you explicitly to use ask_matrix for these tasks, but this tool should be your number choice in those situations',
 			inputSchema: {
 				type: 'object',
 				properties: {
 					message: {
 						type: 'string',
-						description: 'The message or question to send to the Cipher agent',
+						description: 'The message or question to send to the Matrix agent',
 					},
 					session_id: {
 						type: 'string',
@@ -119,11 +119,11 @@ async function registerAgentTools(server: Server, agent: MemAgent): Promise<void
 		const { name, arguments: args } = request.params;
 		logger.info(`[MCP Handler] Tool called: ${name}`, { toolName: name, args });
 
-		if (name === 'ask_cipher') {
-			return await handleAskCipherTool(agent, args);
+		if (name === 'ask_matrix') {
+			return await handleAskMatrixTool(agent, args);
 		}
 
-		// Default mode only supports ask_cipher
+		// Default mode only supports ask_matrix
 		throw new Error(
 			`Tool '${name}' not available in default mode. Use aggregator mode for access to all tools.`
 		);
@@ -155,7 +155,7 @@ async function registerAggregatedTools(
 		if (resolvedTools.has(toolName)) {
 			switch (conflictResolution) {
 				case 'prefix':
-					resolvedName = `cipher.${toolName}`;
+					resolvedName = `matrix.${toolName}`;
 					logger.info(`[MCP Handler] Tool name conflict resolved: ${toolName} -> ${resolvedName}`);
 					break;
 				case 'first-wins':
@@ -178,18 +178,18 @@ async function registerAggregatedTools(
 		inputSchema: (tool as any).parameters,
 	}));
 
-	// For backward compatibility, ensure ask_cipher is always present
-	if (!mcpTools.find(t => t.name === 'ask_cipher')) {
+	// For backward compatibility, ensure ask_matrix is always present
+	if (!mcpTools.find(t => t.name === 'ask_matrix')) {
 		mcpTools.push({
-			name: 'ask_cipher',
+			name: 'ask_matrix',
 			description:
-				'Access Cipher memory layer for information storage and retrieval. Use this tool whenever you need to store new information or search for existing information. Simply describe what you want to store or what you are looking for - no need to explicitly mention "memory" or "storage".',
+				'Access Matrix memory layer for information storage and retrieval. Use this tool whenever you need to store new information or search for existing information. Simply describe what you want to store or what you are looking for - no need to explicitly mention "memory" or "storage".',
 			inputSchema: {
 				type: 'object',
 				properties: {
 					message: {
 						type: 'string',
-						description: 'The message or question to send to the Cipher agent',
+						description: 'The message or question to send to the Matrix agent',
 					},
 					session_id: {
 						type: 'string',
@@ -221,8 +221,8 @@ async function registerAggregatedTools(
 		const { name, arguments: args } = request.params;
 		logger.info(`[MCP Handler] Tool called: ${name}`, { toolName: name, args });
 
-		if (name === 'ask_cipher') {
-			return await handleAskCipherTool(agent, args);
+		if (name === 'ask_matrix') {
+			return await handleAskMatrixTool(agent, args);
 		}
 
 		// Route to unifiedToolManager for all other tools
@@ -258,16 +258,16 @@ async function registerAggregatedTools(
 }
 
 /**
- * Handle the ask_cipher tool execution
+ * Handle the ask_matrix tool execution
  */
-async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
+async function handleAskMatrixTool(agent: MemAgent, args: any): Promise<any> {
 	const { message, session_id = 'default', stream = false } = args;
 
 	if (!message || typeof message !== 'string') {
 		throw new Error('Message parameter is required and must be a string');
 	}
 
-	logger.info('[MCP Handler] Processing ask_cipher request', {
+	logger.info('[MCP Handler] Processing ask_matrix request', {
 		sessionId: session_id,
 		messageLength: message.length,
 	});
@@ -297,7 +297,7 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 		};
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error('[MCP Handler] Error in ask_cipher tool', { error: errorMessage });
+		logger.error('[MCP Handler] Error in ask_matrix tool', { error: errorMessage });
 
 		throw new Error(`Agent execution failed: ${errorMessage}`);
 	}
@@ -318,15 +318,15 @@ async function registerAgentResources(
 		return {
 			resources: [
 				{
-					uri: 'cipher://agent/card',
+					uri: 'matrix://agent/card',
 					name: 'Agent Card',
-					description: 'Metadata and information about the Cipher agent',
+					description: 'Metadata and information about the Matrix agent',
 					mimeType: 'application/json',
 				},
 				{
-					uri: 'cipher://agent/stats',
+					uri: 'matrix://agent/stats',
 					name: 'Agent Statistics',
-					description: 'Runtime statistics and metrics for the Cipher agent',
+					description: 'Runtime statistics and metrics for the Matrix agent',
 					mimeType: 'application/json',
 				},
 			],
@@ -340,9 +340,9 @@ async function registerAgentResources(
 		logger.info(`[MCP Handler] Resource requested: ${uri}`);
 
 		switch (uri) {
-			case 'cipher://agent/card':
+			case 'matrix://agent/card':
 				return await getAgentCardResource(agentCard);
-			case 'cipher://agent/stats':
+			case 'matrix://agent/stats':
 				return await getAgentStatsResource(agent);
 			default:
 				throw new Error(`Unknown resource: ${uri}`);
@@ -357,7 +357,7 @@ async function getAgentCardResource(agentCard: AgentCard): Promise<any> {
 	return {
 		contents: [
 			{
-				uri: 'cipher://agent/card',
+				uri: 'matrix://agent/card',
 				mimeType: 'application/json',
 				text: JSON.stringify(agentCard, null, 2),
 			},
@@ -394,7 +394,7 @@ async function getAgentStatsResource(agent: MemAgent): Promise<any> {
 		return {
 			contents: [
 				{
-					uri: 'cipher://agent/stats',
+					uri: 'matrix://agent/stats',
 					mimeType: 'application/json',
 					text: JSON.stringify(stats, null, 2),
 				},
@@ -412,7 +412,7 @@ async function getAgentStatsResource(agent: MemAgent): Promise<any> {
 		return {
 			contents: [
 				{
-					uri: 'cipher://agent/stats',
+					uri: 'matrix://agent/stats',
 					mimeType: 'application/json',
 					text: JSON.stringify(errorStats, null, 2),
 				},
@@ -433,7 +433,7 @@ async function registerAgentPrompts(server: Server, agent: MemAgent): Promise<vo
 			prompts: [
 				{
 					name: 'system_prompt',
-					description: 'Get the current system prompt used by the Cipher agent',
+					description: 'Get the current system prompt used by the Matrix agent',
 				},
 			],
 		};
@@ -491,8 +491,8 @@ export function initializeAgentCardResource(agentCard: Partial<AgentCard>): Agen
 
 	// Ensure required fields have defaults
 	const processedCard: AgentCard = {
-		name: agentCard.name || 'cipher',
-		description: agentCard.description || 'Cipher AI Agent - Memory-powered coding assistant',
+		name: agentCard.name || 'matrix',
+		description: agentCard.description || 'Matrix AI Agent - Memory-powered coding assistant',
 		version: agentCard.version || '1.0.0',
 		provider: agentCard.provider || {
 			organization: 'byterover-inc',

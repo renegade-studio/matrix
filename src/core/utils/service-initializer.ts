@@ -332,8 +332,8 @@ export async function createAgentServices(
 		});
 	}
 
-	// Emit cipher startup event
-	eventManager.emitServiceEvent('cipher:started', {
+	// Emit matrix startup event
+	eventManager.emitServiceEvent('matrix:started', {
 		timestamp: Date.now(),
 		version: process.env.npm_package_version || '1.0.0',
 	});
@@ -365,7 +365,7 @@ export async function createAgentServices(
 	}
 
 	// Emit MCP manager initialization event
-	eventManager.emitServiceEvent('cipher:serviceStarted', {
+	eventManager.emitServiceEvent('matrix:serviceStarted', {
 		serviceType: 'MCPManager',
 		timestamp: Date.now(),
 	});
@@ -502,7 +502,7 @@ export async function createAgentServices(
 				}
 
 				// Emit embedding manager initialization event
-				eventManager.emitServiceEvent('cipher:serviceStarted', {
+				eventManager.emitServiceEvent('matrix:serviceStarted', {
 					serviceType: 'EmbeddingManager',
 					timestamp: Date.now(),
 				});
@@ -620,7 +620,7 @@ export async function createAgentServices(
 	// --- BEGIN MERGE ADVANCED PROMPT CONFIG ---
 	const promptManager = new EnhancedPromptManager();
 
-	// Load static provider from cipher.yml
+	// Load static provider from matrix.yml
 	let staticProvider: any = null;
 	if (config.systemPrompt) {
 		let enabled = true;
@@ -641,10 +641,10 @@ export async function createAgentServices(
 		};
 	}
 
-	// Load providers from cipher-advanced-prompt.yml
+	// Load providers from matrix-advanced-prompt.yml
 	let advancedProviders: any[] = [];
 	let advancedSettings: any = {};
-	const advancedPromptPath = path.resolve(process.cwd(), 'memAgent/cipher-advanced-prompt.yml');
+	const advancedPromptPath = path.resolve(process.cwd(), 'memAgent/matrix-advanced-prompt.yml');
 	if (fs.existsSync(advancedPromptPath)) {
 		const fileContent = fs.readFileSync(advancedPromptPath, 'utf8');
 		const parsed = yaml.parse(fileContent);
@@ -656,7 +656,7 @@ export async function createAgentServices(
 		}
 	}
 
-	// Merge providers: staticProvider (from cipher.yml) + advancedProviders (from cipher-advanced-prompt.yml)
+	// Merge providers: staticProvider (from matrix.yml) + advancedProviders (from matrix-advanced-prompt.yml)
 	const mergedProviders = [
 		...(staticProvider ? [staticProvider] : []),
 		...advancedProviders.filter(p => !staticProvider || p.name !== staticProvider.name),
@@ -787,7 +787,7 @@ export async function createAgentServices(
 	let unifiedToolManagerConfig: any;
 
 	if (appMode === 'cli') {
-		// CLI Mode: Only search tools accessible to Cipher's LLM, background tools executed separately
+		// CLI Mode: Only search tools accessible to Matrix's LLM, background tools executed separately
 		unifiedToolManagerConfig = {
 			enableInternalTools: true,
 			enableMcpTools: true,
@@ -853,7 +853,7 @@ export async function createAgentServices(
 	}
 
 	// Emit session manager initialization event
-	eventManager.emitServiceEvent('cipher:serviceStarted', {
+	eventManager.emitServiceEvent('matrix:serviceStarted', {
 		serviceType: 'SessionManager',
 		timestamp: Date.now(),
 	});
@@ -891,7 +891,7 @@ export async function createAgentServices(
 	const serviceTypes = Object.keys(agentServices).filter(
 		key => agentServices[key as keyof AgentServices]
 	);
-	eventManager.emitServiceEvent('cipher:allServicesReady', {
+	eventManager.emitServiceEvent('matrix:allServicesReady', {
 		timestamp: Date.now(),
 		services: serviceTypes,
 	});

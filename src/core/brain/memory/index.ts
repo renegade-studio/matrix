@@ -1,7 +1,7 @@
 /**
  * Memory System with Lazy Loading Optimizations
  *
- * Memory-related functionality for the Cipher agent with performance optimizations.
+ * Memory-related functionality for the Matrix agent with performance optimizations.
  * Phase 3: Memory operations lazy loading - properly integrated into the application.
  */
 

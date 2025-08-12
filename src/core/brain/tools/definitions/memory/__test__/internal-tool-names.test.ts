@@ -64,12 +64,12 @@ describe('Internal Tool Names', () => {
 
 	it('should register tool with correct name in InternalToolManager', () => {
 		const internalTools = internalToolManager.getAllTools();
-		expect(Object.keys(internalTools)).toContain('cipher_extract_and_operate_memory');
+		expect(Object.keys(internalTools)).toContain('matrix_extract_and_operate_memory');
 	});
 
 	it('should identify internal tools correctly', () => {
 		expect(internalToolManager.isInternalTool('extract_and_operate_memory')).toBe(true);
-		expect(internalToolManager.isInternalTool('cipher_extract_and_operate_memory')).toBe(true);
+		expect(internalToolManager.isInternalTool('matrix_extract_and_operate_memory')).toBe(true);
 		expect(internalToolManager.isInternalTool('nonexistent_tool')).toBe(false);
 	});
 
@@ -81,7 +81,7 @@ describe('Internal Tool Names', () => {
 
 		const allTools = await unifiedToolManager.getAllTools();
 		// Internal-only tools should not be accessible to agents
-		expect(Object.keys(allTools)).not.toContain('cipher_extract_and_operate_memory');
+		expect(Object.keys(allTools)).not.toContain('matrix_extract_and_operate_memory');
 	});
 
 	it('should check tool availability correctly', async () => {
@@ -91,7 +91,7 @@ describe('Internal Tool Names', () => {
 		});
 
 		// Internal-only tools should not be available to agents
-		expect(await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory')).toBe(
+		expect(await unifiedToolManager.isToolAvailable('matrix_extract_and_operate_memory')).toBe(
 			false
 		);
 		expect(await unifiedToolManager.isToolAvailable('nonexistent_tool')).toBe(false);

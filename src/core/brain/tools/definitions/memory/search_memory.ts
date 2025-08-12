@@ -51,7 +51,7 @@ interface MemorySearchResult {
  * It searches over stored knowledge memories using vector similarity search
  * and returns relevant entries that can inform the current reasoning process.
  *
- * NOTE: This tool ONLY searches knowledge memory. For reflection memory, use cipher_search_reasoning_patterns.
+ * NOTE: This tool ONLY searches knowledge memory. For reflection memory, use matrix_search_reasoning_patterns.
  */
 export const searchMemoryTool: InternalTool = {
 	name: 'memory_search',

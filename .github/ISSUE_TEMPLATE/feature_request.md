@@ -1,6 +1,6 @@
 ---
 name: Feature Request or Enhancement
-about: Suggest an idea for an Cipher feature or enhancement
+about: Suggest an idea for an Matrix feature or enhancement
 title: '[FEATURE] '
 labels: 'enhancement'
 assignees: ''

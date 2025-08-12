@@ -135,12 +135,12 @@ describe('Tool Definitions', () => {
 			const tools = await getAllToolDefinitions();
 
 			// Check memory tools (always loaded)
-			expect(tools['cipher_extract_and_operate_memory']).toBeDefined();
-			expect(tools['cipher_memory_search']).toBeDefined();
-			expect(tools['cipher_store_reasoning_memory']).toBeDefined();
-			expect(tools['cipher_extract_reasoning_steps']).toBeDefined();
-			expect(tools['cipher_evaluate_reasoning']).toBeDefined();
-			expect(tools['cipher_search_reasoning_patterns']).toBeDefined();
+			expect(tools['matrix_extract_and_operate_memory']).toBeDefined();
+			expect(tools['matrix_memory_search']).toBeDefined();
+			expect(tools['matrix_store_reasoning_memory']).toBeDefined();
+			expect(tools['matrix_extract_reasoning_steps']).toBeDefined();
+			expect(tools['matrix_evaluate_reasoning']).toBeDefined();
+			expect(tools['matrix_search_reasoning_patterns']).toBeDefined();
 
 			// Check knowledge graph tools (conditionally loaded)
 			const { env } = await import('../../../env.js');
@@ -159,12 +159,12 @@ describe('Tool Definitions', () => {
 			const result = await registerAllTools(manager);
 
 			// Check memory tools (always registered)
-			expect(result.registered).toContain('cipher_extract_and_operate_memory');
-			expect(result.registered).toContain('cipher_memory_search');
-			expect(result.registered).toContain('cipher_store_reasoning_memory');
-			expect(result.registered).toContain('cipher_extract_reasoning_steps');
-			expect(result.registered).toContain('cipher_evaluate_reasoning');
-			expect(result.registered).toContain('cipher_search_reasoning_patterns');
+			expect(result.registered).toContain('matrix_extract_and_operate_memory');
+			expect(result.registered).toContain('matrix_memory_search');
+			expect(result.registered).toContain('matrix_store_reasoning_memory');
+			expect(result.registered).toContain('matrix_extract_reasoning_steps');
+			expect(result.registered).toContain('matrix_evaluate_reasoning');
+			expect(result.registered).toContain('matrix_search_reasoning_patterns');
 
 			// Check knowledge graph tools (conditionally registered)
 			const { env } = await import('../../../env.js');
@@ -179,7 +179,7 @@ describe('Tool Definitions', () => {
 			}
 
 			// Verify memory search tool is available (searches knowledge memory only)
-			const memorySearchTool = manager.getTool('cipher_memory_search');
+			const memorySearchTool = manager.getTool('matrix_memory_search');
 			expect(memorySearchTool).toBeDefined();
 			if (memorySearchTool) {
 				expect(memorySearchTool.parameters.properties.query).toBeDefined();
@@ -194,7 +194,7 @@ describe('Tool Definitions', () => {
 			const tools = await getAllToolDefinitions();
 			// Debug: Log available tool names
 			console.log('Available tool names:', Object.keys(tools));
-			const memorySearchTool = tools['cipher_memory_search'];
+			const memorySearchTool = tools['matrix_memory_search'];
 
 			expect(memorySearchTool).toBeDefined();
 			if (memorySearchTool) {
@@ -237,7 +237,7 @@ describe('Tool Definitions', () => {
 		});
 
 		it('should get tool info by name', () => {
-			const extractInfo = getToolInfo('cipher_extract_and_operate_memory');
+			const extractInfo = getToolInfo('matrix_extract_and_operate_memory');
 			expect(extractInfo).toBeDefined();
 			expect(extractInfo?.category).toBe('memory');
 		});
@@ -250,12 +250,12 @@ describe('Tool Definitions', () => {
 		it('should get tools by category', () => {
 			const memoryTools = getToolsByCategory('memory');
 			expect(memoryTools).toHaveLength(6);
-			expect(memoryTools).toContain('cipher_extract_and_operate_memory');
-			expect(memoryTools).toContain('cipher_memory_search');
-			expect(memoryTools).toContain('cipher_store_reasoning_memory');
-			expect(memoryTools).toContain('cipher_extract_reasoning_steps');
-			expect(memoryTools).toContain('cipher_evaluate_reasoning');
-			expect(memoryTools).toContain('cipher_search_reasoning_patterns');
+			expect(memoryTools).toContain('matrix_extract_and_operate_memory');
+			expect(memoryTools).toContain('matrix_memory_search');
+			expect(memoryTools).toContain('matrix_store_reasoning_memory');
+			expect(memoryTools).toContain('matrix_extract_reasoning_steps');
+			expect(memoryTools).toContain('matrix_evaluate_reasoning');
+			expect(memoryTools).toContain('matrix_search_reasoning_patterns');
 		});
 	});
 

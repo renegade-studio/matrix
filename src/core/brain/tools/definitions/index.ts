@@ -1,7 +1,7 @@
 /**
  * Tool Definitions Module
  *
- * This module exports all internal tool definitions for the Cipher agent.
+ * This module exports all internal tool definitions for the Matrix agent.
  * It provides a centralized registry of all available tools organized by category.
  */
 
@@ -158,8 +158,8 @@ export function getToolInfo(toolName: string): {
 	description: string;
 	useCase: string;
 } | null {
-	// Normalize the tool name (remove cipher_ prefix if present)
-	const normalizedName = toolName.replace(/^cipher_/, '');
+	// Normalize the tool name (remove matrix_ prefix if present)
+	const normalizedName = toolName.replace(/^matrix_/, '');
 
 	for (const [categoryName, categoryInfo] of Object.entries(TOOL_CATEGORIES)) {
 		if (categoryInfo.tools.includes(normalizedName)) {
@@ -183,6 +183,6 @@ export function getToolsByCategory(category: keyof typeof TOOL_CATEGORIES): stri
 		return [];
 	}
 
-	// Return tool names with cipher_ prefix as they appear in the system
-	return categoryInfo.tools.map(toolName => `cipher_${toolName}`);
+	// Return tool names with matrix_ prefix as they appear in the system
+	return categoryInfo.tools.map(toolName => `matrix_${toolName}`);
 }

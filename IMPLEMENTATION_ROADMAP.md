@@ -1,8 +1,8 @@
-# Cipher: Implementation and Roadmap
+# Matrix: Implementation and Roadmap
 
 ## 1. Introduction
 
-This document outlines the implementation details and development roadmap for Cipher, a memory-powered AI agent framework. The goal of this document is to provide a clear path forward for the project, starting with a strategic rewrite of the existing TypeScript codebase into Go. This transition aims to enhance performance, improve concurrency, and create a more robust and scalable foundation for future development.
+This document outlines the implementation details and development roadmap for Matrix, a memory-powered AI agent framework. The goal of this document is to provide a clear path forward for the project, starting with a strategic rewrite of the existing TypeScript codebase into Go. This transition aims to enhance performance, improve concurrency, and create a more robust and scalable foundation for future development.
 
 This roadmap is a living document and will be updated as the project evolves.
 
@@ -29,10 +29,10 @@ The current codebase is well-structured and divided into two main parts:
 The Go implementation will follow a similar package structure to maintain familiarity and ensure a clear separation of concerns. The proposed structure is as follows:
 
 ```
-/cipher-go
+/matrix-go
   /cmd
-    /cipher-cli         # Main application for the CLI
-    /cipher-server      # Main application for the API server
+    /matrix-cli         # Main application for the CLI
+    /matrix-server      # Main application for the API server
   /internal
     /app
       /cli              # CLI command handlers and UI
@@ -56,7 +56,7 @@ The following is a list of key modules from the TypeScript codebase that will be
 
 **Core Logic (`/internal/core`):**
 
-*   **Configuration (`core/config`):** Loading and parsing of `cipher.yml`.
+*   **Configuration (`core/config`):** Loading and parsing of `matrix.yml`.
 *   **LLM Providers (`core/brain/llm`):** Integrations with OpenAI, Anthropic, Ollama, etc.
 *   **Embedding Providers (`core/brain/embedding`):** Integrations for text embeddings.
 *   **Vector Storage (`core/vector_storage`):** Clients for Qdrant and Milvus.
@@ -80,7 +80,7 @@ Once the Go implementation is complete and stable, Phase 2 will focus on perform
 
 ## 5. Phase 3: Feature Enhancements (Placeholder)
 
-Phase 3 will focus on adding new features and capabilities to the Go-based version of Cipher. Potential features include:
+Phase 3 will focus on adding new features and capabilities to the Go-based version of Matrix. Potential features include:
 
 *   **New LLM and Vector Store Integrations:** Expanding the list of supported services.
 *   **Advanced Memory Strategies:** Researching and implementing new memory techniques.

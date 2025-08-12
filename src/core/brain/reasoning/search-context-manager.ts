@@ -3,7 +3,7 @@
  *
  * Handles multiple search tool calls and provides well-sorted context
  * to feed into the agent. This ensures efficient use of search results
- * from cipher_search_graph, cipher_memory_search, and cipher_search_reasoning_patterns.
+ * from matrix_search_graph, matrix_memory_search, and matrix_search_reasoning_patterns.
  */
 
 import { logger } from '../../logger/index.js';

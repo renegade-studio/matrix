@@ -1,7 +1,7 @@
 /**
  * Memory Tools Module
  *
- * This module exports all memory-related internal tools for the Cipher agent.
+ * This module exports all memory-related internal tools for the Matrix agent.
  * These tools handle fact extraction, knowledge processing, memory operations, and memory search.
  */
 
@@ -61,12 +61,12 @@ export async function getMemoryTools(
 	if (!embeddingEnabled) {
 		logger.warn('Embeddings disabled - excluding all embedding-dependent memory tools', {
 			excludedTools: [
-				'cipher_extract_and_operate_memory',
-				'cipher_memory_search',
-				'cipher_store_reasoning_memory',
-				'cipher_extract_reasoning_steps',
-				'cipher_evaluate_reasoning',
-				'cipher_search_reasoning_patterns',
+				'matrix_extract_and_operate_memory',
+				'matrix_memory_search',
+				'matrix_store_reasoning_memory',
+				'matrix_extract_reasoning_steps',
+				'matrix_evaluate_reasoning',
+				'matrix_search_reasoning_patterns',
 			],
 		});
 		return {};
@@ -80,12 +80,12 @@ export async function getMemoryTools(
 		: extractAndOperateMemoryTool;
 
 	return {
-		cipher_extract_and_operate_memory: extractAndOperateTool,
-		cipher_memory_search: searchMemoryTool,
-		cipher_store_reasoning_memory: storeReasoningMemoryTool,
-		cipher_extract_reasoning_steps: extractReasoningSteps,
-		cipher_evaluate_reasoning: evaluateReasoning,
-		cipher_search_reasoning_patterns: searchReasoningPatterns,
+		matrix_extract_and_operate_memory: extractAndOperateTool,
+		matrix_memory_search: searchMemoryTool,
+		matrix_store_reasoning_memory: storeReasoningMemoryTool,
+		matrix_extract_reasoning_steps: extractReasoningSteps,
+		matrix_evaluate_reasoning: evaluateReasoning,
+		matrix_search_reasoning_patterns: searchReasoningPatterns,
 	};
 }
 
