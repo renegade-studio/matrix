@@ -92,11 +92,11 @@ describe('InternalToolRegistry', () => {
 			expect(result.message).toContain('registered successfully');
 		});
 
-		it('should normalize tool names with cipher_ prefix', () => {
+		it('should normalize tool names with matrix_ prefix', () => {
 			registry.registerTool(testTool);
 
 			const tool = registry.getTool('test_tool');
-			expect(tool?.name).toBe('cipher_test_tool');
+			expect(tool?.name).toBe('matrix_test_tool');
 		});
 
 		it('should prevent duplicate registrations', () => {
@@ -105,7 +105,7 @@ describe('InternalToolRegistry', () => {
 
 			expect(result.success).toBe(false);
 			expect(result.message).toContain('already registered');
-			expect(result.conflictedWith).toBe('cipher_test_tool');
+			expect(result.conflictedWith).toBe('matrix_test_tool');
 		});
 
 		it('should validate required fields', () => {
@@ -202,8 +202,8 @@ describe('InternalToolRegistry', () => {
 		it('should retrieve all tools', () => {
 			const tools = registry.getAllTools();
 			expect(Object.keys(tools)).toHaveLength(2);
-			expect(tools['cipher_test_tool']).toBeDefined();
-			expect(tools['cipher_session_tool']).toBeDefined();
+			expect(tools['matrix_test_tool']).toBeDefined();
+			expect(tools['matrix_session_tool']).toBeDefined();
 		});
 
 		it('should retrieve tools by category', () => {
@@ -222,7 +222,7 @@ describe('InternalToolRegistry', () => {
 		});
 
 		it('should identify internal tools', () => {
-			expect(registry.isInternalTool('cipher_test_tool')).toBe(true);
+			expect(registry.isInternalTool('matrix_test_tool')).toBe(true);
 			expect(registry.isInternalTool('external_tool')).toBe(false);
 		});
 	});
@@ -252,8 +252,8 @@ describe('InternalToolRegistry', () => {
 
 		it('should get all tool names', () => {
 			const names = registry.getToolNames();
-			expect(names).toContain('cipher_test_tool');
-			expect(names).toContain('cipher_session_tool');
+			expect(names).toContain('matrix_test_tool');
+			expect(names).toContain('matrix_session_tool');
 			expect(names).toHaveLength(2);
 		});
 
@@ -261,8 +261,8 @@ describe('InternalToolRegistry', () => {
 			const memoryNames = registry.getToolNamesByCategory('memory');
 			const sessionNames = registry.getToolNamesByCategory('session');
 
-			expect(memoryNames).toEqual(['cipher_test_tool']);
-			expect(sessionNames).toEqual(['cipher_session_tool']);
+			expect(memoryNames).toEqual(['matrix_test_tool']);
+			expect(sessionNames).toEqual(['matrix_session_tool']);
 		});
 	});
 
@@ -289,17 +289,17 @@ describe('InternalToolRegistry', () => {
 	});
 
 	describe('Edge Cases', () => {
-		it('should handle tools with cipher_ prefix already', () => {
+		it('should handle tools with matrix_ prefix already', () => {
 			const prefixedTool: InternalTool = {
 				...testTool,
-				name: 'cipher_prefixed_tool',
+				name: 'matrix_prefixed_tool',
 			};
 
 			const result = registry.registerTool(prefixedTool);
 			expect(result.success).toBe(true);
 
-			const tool = registry.getTool('cipher_prefixed_tool');
-			expect(tool?.name).toBe('cipher_prefixed_tool');
+			const tool = registry.getTool('matrix_prefixed_tool');
+			expect(tool?.name).toBe('matrix_prefixed_tool');
 		});
 
 		it('should handle empty tool parameters', () => {

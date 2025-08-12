@@ -36,7 +36,7 @@ export async function loadAgentConfig(configPath: string): Promise<AgentConfig> 
 	try {
 		// Determine where to load from: absolute, default, or user-relative
 
-		logger.debug(`Loading cipher config from: ${configPath}`);
+		logger.debug(`Loading matrix config from: ${configPath}`);
 
 		// Read and parse the config file
 		const fileContent = await fs.readFile(configPath, 'utf-8');

@@ -141,8 +141,8 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 	});
 
 	describe('Fix 2: Tool Categories - Tool Info by Name (definitions.test.ts line 122)', () => {
-		it('should get tool info for cipher_extract_and_operate_memory', () => {
-			const extractInfo = getToolInfo('cipher_extract_and_operate_memory');
+		it('should get tool info for matrix_extract_and_operate_memory', () => {
+			const extractInfo = getToolInfo('matrix_extract_and_operate_memory');
 			expect(extractInfo).toBeDefined();
 			expect(extractInfo?.category).toBe('memory');
 			expect(extractInfo?.description).toContain(
@@ -150,17 +150,17 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 			);
 		});
 
-		it('should get tool info for cipher_memory_search', () => {
-			const searchInfo = getToolInfo('cipher_memory_search');
+		it('should get tool info for matrix_memory_search', () => {
+			const searchInfo = getToolInfo('matrix_memory_search');
 			expect(searchInfo).toBeDefined();
 			expect(searchInfo?.category).toBe('memory');
 		});
 
 		it('should NOT return tool info for old deprecated tools', () => {
-			const extractKnowledgeInfo = getToolInfo('cipher_extract_knowledge');
+			const extractKnowledgeInfo = getToolInfo('matrix_extract_knowledge');
 			expect(extractKnowledgeInfo).toBeNull();
 
-			const memoryOperationInfo = getToolInfo('cipher_memory_operation');
+			const memoryOperationInfo = getToolInfo('matrix_memory_operation');
 			expect(memoryOperationInfo).toBeNull();
 		});
 	});
@@ -169,18 +169,18 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		it('should include new tools in memory category', () => {
 			const memoryTools = getToolsByCategory('memory');
 			expect(memoryTools).toHaveLength(6); // 6 tools total (3 agent-accessible + 3 internal-only)
-			expect(memoryTools).toContain('cipher_extract_and_operate_memory');
-			expect(memoryTools).toContain('cipher_memory_search');
-			expect(memoryTools).toContain('cipher_store_reasoning_memory');
-			expect(memoryTools).toContain('cipher_extract_reasoning_steps');
-			expect(memoryTools).toContain('cipher_evaluate_reasoning');
-			expect(memoryTools).toContain('cipher_search_reasoning_patterns');
+			expect(memoryTools).toContain('matrix_extract_and_operate_memory');
+			expect(memoryTools).toContain('matrix_memory_search');
+			expect(memoryTools).toContain('matrix_store_reasoning_memory');
+			expect(memoryTools).toContain('matrix_extract_reasoning_steps');
+			expect(memoryTools).toContain('matrix_evaluate_reasoning');
+			expect(memoryTools).toContain('matrix_search_reasoning_patterns');
 		});
 
 		it('should NOT include old deprecated tools in memory category', () => {
 			const memoryTools = getToolsByCategory('memory');
-			expect(memoryTools).not.toContain('cipher_extract_knowledge');
-			expect(memoryTools).not.toContain('cipher_memory_operation');
+			expect(memoryTools).not.toContain('matrix_extract_knowledge');
+			expect(memoryTools).not.toContain('matrix_memory_operation');
 		});
 
 		it('should have correct TOOL_CATEGORIES structure', () => {
@@ -231,16 +231,16 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		it('should load internal tools when enabled', async () => {
 			const tools = await unifiedToolManager.getAllTools();
 
-			// In default mode, only ask_cipher should be available
-			expect(tools['ask_cipher']).toBeDefined();
+			// In default mode, only ask_matrix should be available
+			expect(tools['ask_matrix']).toBeDefined();
 
 			// Internal-only tools should not be accessible to agents in default mode
-			expect(tools['cipher_store_reasoning_memory']).toBeUndefined();
-			expect(tools['cipher_extract_and_operate_memory']).toBeUndefined();
-			expect(tools['cipher_extract_reasoning_steps']).toBeUndefined();
-			expect(tools['cipher_evaluate_reasoning']).toBeUndefined();
+			expect(tools['matrix_store_reasoning_memory']).toBeUndefined();
+			expect(tools['matrix_extract_and_operate_memory']).toBeUndefined();
+			expect(tools['matrix_extract_reasoning_steps']).toBeUndefined();
+			expect(tools['matrix_evaluate_reasoning']).toBeUndefined();
 
-			// Should have 1 tool total in default mode (only ask_cipher)
+			// Should have 1 tool total in default mode (only ask_matrix)
 			expect(Object.keys(tools)).toHaveLength(1);
 
 			// All accessible tools should be marked as internal
@@ -252,7 +252,7 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 
 	describe('Fix 6-7: Unified Tool Manager - Tool Execution (unified-tool-manager.test.ts lines 125, 135)', () => {
 		it('should execute internal tools correctly', async () => {
-			const result = await unifiedToolManager.executeTool('cipher_extract_and_operate_memory', {
+			const result = await unifiedToolManager.executeTool('matrix_extract_and_operate_memory', {
 				interaction: ['TypeScript interface pattern for tools'],
 			});
 
@@ -269,7 +269,7 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		it('should route tools to correct manager', async () => {
 			// Test internal tool routing
 			const internalResult = await unifiedToolManager.executeTool(
-				'cipher_extract_and_operate_memory',
+				'matrix_extract_and_operate_memory',
 				{
 					interaction: ['Test knowledge extraction'],
 				}
@@ -285,39 +285,39 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 
 			// Test that internal-only tools are not accessible to agents
 			const isInternal = await unifiedToolManager.getToolSource(
-				'cipher_extract_and_operate_memory'
+				'matrix_extract_and_operate_memory'
 			);
 			expect(isInternal).toBe(null); // Not accessible to agents
 		});
 
 		it('should NOT find old deprecated tools', async () => {
 			await expect(
-				unifiedToolManager.executeTool('cipher_extract_knowledge', {})
+				unifiedToolManager.executeTool('matrix_extract_knowledge', {})
 			).rejects.toThrow();
 
-			await expect(unifiedToolManager.executeTool('cipher_memory_operation', {})).rejects.toThrow();
+			await expect(unifiedToolManager.executeTool('matrix_memory_operation', {})).rejects.toThrow();
 		});
 	});
 
 	describe('Fix 8: Tool Availability Check (unified-tool-manager.test.ts line 151)', () => {
 		it('should check tool availability correctly for new tools', async () => {
 			// Agent-accessible tools should be available
-			const isSearchAvailable = await unifiedToolManager.isToolAvailable('ask_cipher');
+			const isSearchAvailable = await unifiedToolManager.isToolAvailable('ask_matrix');
 			expect(isSearchAvailable).toBe(true);
 
 			const isReasoningSearchAvailable = await unifiedToolManager.isToolAvailable(
-				'cipher_search_reasoning_patterns'
+				'matrix_search_reasoning_patterns'
 			);
 			expect(isReasoningSearchAvailable).toBe(false); // Not available in default mode
 
 			// Internal-only tools should not be available to agents
 			const isExtractAvailable = await unifiedToolManager.isToolAvailable(
-				'cipher_extract_and_operate_memory'
+				'matrix_extract_and_operate_memory'
 			);
 			expect(isExtractAvailable).toBe(false);
 
 			const isStoreAvailable = await unifiedToolManager.isToolAvailable(
-				'cipher_store_reasoning_memory'
+				'matrix_store_reasoning_memory'
 			);
 			expect(isStoreAvailable).toBe(false);
 
@@ -328,12 +328,12 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 
 		it('should return false for old deprecated tools', async () => {
 			const oldExtractAvailable = await unifiedToolManager.isToolAvailable(
-				'cipher_extract_knowledge'
+				'matrix_extract_knowledge'
 			);
 			expect(oldExtractAvailable).toBe(false);
 
 			const oldOperationAvailable =
-				await unifiedToolManager.isToolAvailable('cipher_memory_operation');
+				await unifiedToolManager.isToolAvailable('matrix_memory_operation');
 			expect(oldOperationAvailable).toBe(false);
 		});
 	});
@@ -341,21 +341,21 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 	describe('Fix 9: Tool Source Detection (unified-tool-manager.test.ts line 260)', () => {
 		it('should correctly identify internal tool sources for new tools', async () => {
 			// Agent-accessible tools should return 'internal'
-			const searchSource = await unifiedToolManager.getToolSource('ask_cipher');
+			const searchSource = await unifiedToolManager.getToolSource('ask_matrix');
 			expect(searchSource).toBe('internal');
 
 			const reasoningSearchSource = await unifiedToolManager.getToolSource(
-				'cipher_search_reasoning_patterns'
+				'matrix_search_reasoning_patterns'
 			);
 			expect(reasoningSearchSource).toBe(null); // Not available in default mode
 
 			// Internal-only tools should return null (not accessible to agents)
 			const extractSource = await unifiedToolManager.getToolSource(
-				'cipher_extract_and_operate_memory'
+				'matrix_extract_and_operate_memory'
 			);
 			expect(extractSource).toBe(null);
 
-			const storeSource = await unifiedToolManager.getToolSource('cipher_store_reasoning_memory');
+			const storeSource = await unifiedToolManager.getToolSource('matrix_store_reasoning_memory');
 			expect(storeSource).toBe(null);
 
 			// Unknown tools should return null
@@ -364,10 +364,10 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		});
 
 		it('should return null for old deprecated tools', async () => {
-			const oldExtractSource = await unifiedToolManager.getToolSource('cipher_extract_knowledge');
+			const oldExtractSource = await unifiedToolManager.getToolSource('matrix_extract_knowledge');
 			expect(oldExtractSource).toBeNull();
 
-			const oldOperationSource = await unifiedToolManager.getToolSource('cipher_memory_operation');
+			const oldOperationSource = await unifiedToolManager.getToolSource('matrix_memory_operation');
 			expect(oldOperationSource).toBeNull();
 		});
 
@@ -387,11 +387,11 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 			if (env.KNOWLEDGE_GRAPH_ENABLED) {
 				expect(Object.keys(allTools).length).toBe(13);
 			} else {
-				expect(Object.keys(allTools).length).toBe(1); // Only ask_cipher in default mode
+				expect(Object.keys(allTools).length).toBe(1); // Only ask_matrix in default mode
 			}
 
 			// Test tool execution for internal-only tools (should still work for system)
-			const result = await unifiedToolManager.executeTool('cipher_extract_and_operate_memory', {
+			const result = await unifiedToolManager.executeTool('matrix_extract_and_operate_memory', {
 				interaction: [
 					'The API endpoint requires authentication using JWT tokens. The function validates user permissions and handles error responses.',
 				],
@@ -431,8 +431,8 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 			expect(registerResult.success).toBe(true);
 
 			const tools = freshManager.getAllTools();
-			expect(Object.keys(tools)).toContain('cipher_extract_and_operate_memory');
-			expect(freshManager.isInternalTool('cipher_extract_and_operate_memory')).toBe(true);
+			expect(Object.keys(tools)).toContain('matrix_extract_and_operate_memory');
+			expect(freshManager.isInternalTool('matrix_extract_and_operate_memory')).toBe(true);
 			expect(freshManager.isInternalTool('extract_and_operate_memory')).toBe(true);
 		});
 	});

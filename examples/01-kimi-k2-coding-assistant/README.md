@@ -4,7 +4,7 @@
 
 ## Overview
 
-This configuration showcases Cipher as a high-performance coding assistant using Moonshot AI's Kimi K2 model via OpenRouter. 
+This configuration showcases Matrix as a high-performance coding assistant using Moonshot AI's Kimi K2 model via OpenRouter.
 
 Kimi K2 is Moonshot AI's latest model that delivers exceptional performance in coding tasks and tool calling. Learn more about Kimi K2 on [GitHub](https://github.com/MoonshotAI/Kimi-K2).
 
@@ -37,26 +37,26 @@ export FIRECRAWL_API_KEY=your_firecrawl_api_key
 # Navigate to the example directory
 cd examples/01-kimi-k2-coding-assistant
 
-# Start Cipher with this configuration
-cipher --agent ./cipher.yml
+# Start Matrix with this configuration
+matrix --agent ./matrix.yml
 ```
 
 ### 3. Test the Setup
 
 ```bash
 # Test file system access
-cipher> Analyze the structure of my current project
+matrix> Analyze the structure of my current project
 
 # Test web research
-cipher> Research React Server Components best practices
+matrix> Research React Server Components best practices
 
 # Test memory
-cipher> Remember I prefer TypeScript with strict mode
+matrix> Remember I prefer TypeScript with strict mode
 ```
 
 ## Configuration
 
-The `cipher.yml` file includes key settings you can customize:
+The `matrix.yml` file includes key settings you can customize:
 
 ### LLM Model
 ```yaml
@@ -78,28 +78,28 @@ The configuration includes:
 - **filesystem**: For reading/writing project files
 - **firecrawl**: For web research and documentation lookup
 
-You can add more MCP servers by extending the `mcpServers` section in `cipher.yml`.
+You can add more MCP servers by extending the `mcpServers` section in `matrix.yml`.
 
 ## Usage Examples
 
 **Code Analysis:**
 ```bash
-cipher> Review the authentication middleware in src/middleware/auth.js
+matrix> Review the authentication middleware in src/middleware/auth.js
 ```
 
 **Research-Driven Development:**
 ```bash
-cipher> Research WebSocket vs Server-Sent Events for real-time notifications in React
+matrix> Research WebSocket vs Server-Sent Events for real-time notifications in React
 ```
 
 **Architecture Analysis:**
 ```bash
-cipher> Analyze my authentication system and suggest improvements
+matrix> Analyze my authentication system and suggest improvements
 ```
 
 **Performance Optimization:**
 ```bash
-cipher> Analyze React performance bottlenecks and suggest optimizations
+matrix> Analyze React performance bottlenecks and suggest optimizations
 ```
 
 ## Troubleshooting

@@ -4,7 +4,7 @@
 
 ## Key Benefits of Aggregator Mode
 
-- **Single Integration Point**: Connect to multiple MCP servers through one Cipher instance
+- **Single Integration Point**: Connect to multiple MCP servers through one Matrix instance
 - **Memory-Enhanced**: Persistent cross-session learning and context retention
 - **Transport Flexibility**: Supports stdio, SSE, and streamable-http connections seamlessly
 - **IDE Compatibility**: Works with Cursor, Claude Code, VS Code, and other MCP-compatible editors
@@ -42,7 +42,7 @@
 
 ## Adding Custom MCP Servers
 
-To extend the aggregator with your own MCP servers, add them to the `mcpServers` section in `cipher.yml`. Cipher supports all three MCP transport types:
+To extend the aggregator with your own MCP servers, add them to the `mcpServers` section in `matrix.yml`. Matrix supports all three MCP transport types:
 
 ### **Transport Type: `stdio`** (Local Process)
 ```yaml
@@ -106,18 +106,18 @@ your-sse-server:
 
 ## Configuration Example
 
-Add Cipher aggregator to your MCP client configuration:
+Add Matrix aggregator to your MCP client configuration:
 
 ```json
 {
   "mcpServers": {
-    "cipher": {
-      "command": "/path/to/cipher/dist/src/app/index.cjs",
+    "matrix": {
+      "command": "/path/to/matrix/dist/src/app/index.cjs",
       "args": [
         "--mode",
         "mcp", 
         "--agent",
-        "/path/to/cipher/examples/04-mcp-aggregator-hub/cipher.yml"
+        "/path/to/matrix/examples/04-mcp-aggregator-hub/matrix.yml"
       ],
       "env": {
         "MCP_SERVER_MODE": "aggregator",
@@ -137,7 +137,7 @@ Add Cipher aggregator to your MCP client configuration:
 - `EXA_API_KEY`: For web search functionality
 - Vector store configuration for memory persistence
 
-**Current Configuration (`cipher.yml`):**
+**Current Configuration (`matrix.yml`):**
 ```yaml
 # LLM Configuration
 llm:

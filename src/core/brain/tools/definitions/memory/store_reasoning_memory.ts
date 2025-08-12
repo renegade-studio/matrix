@@ -28,8 +28,8 @@ function generateSafeReasoningMemoryId(index: number): number {
  *
  * Stores reasoning traces and their evaluations as unified entries in the reflection vector store.
  * This ensures atomic storage and retrieval - you always get both reasoning steps and evaluation together.
- * This is an append-only operation that takes the complete trace output from cipher_extract_reasoning_steps
- * (which includes automatically extracted task context) and evaluation from cipher_evaluate_reasoning.
+ * This is an append-only operation that takes the complete trace output from matrix_extract_reasoning_steps
+ * (which includes automatically extracted task context) and evaluation from matrix_evaluate_reasoning.
  */
 export const storeReasoningMemoryTool: InternalTool = {
 	name: 'store_reasoning_memory',
@@ -37,7 +37,7 @@ export const storeReasoningMemoryTool: InternalTool = {
 	internal: true,
 	agentAccessible: false, // Internal-only: programmatically called when reasoning content is detected
 	description:
-		'Store complete reasoning traces with task context and evaluations in reflection memory. Takes trace with auto-extracted context from cipher_extract_reasoning_steps and evaluation from cipher_evaluate_reasoning. Append-only operation.',
+		'Store complete reasoning traces with task context and evaluations in reflection memory. Takes trace with auto-extracted context from matrix_extract_reasoning_steps and evaluation from matrix_evaluate_reasoning. Append-only operation.',
 	version: '2.1.0',
 	parameters: {
 		type: 'object',
@@ -45,7 +45,7 @@ export const storeReasoningMemoryTool: InternalTool = {
 			trace: {
 				type: 'object',
 				description:
-					'Complete reasoning trace from cipher_extract_reasoning_steps (includes steps and metadata with task context)',
+					'Complete reasoning trace from matrix_extract_reasoning_steps (includes steps and metadata with task context)',
 				properties: {
 					id: { type: 'string' },
 					steps: {
@@ -107,7 +107,7 @@ export const storeReasoningMemoryTool: InternalTool = {
 			},
 			evaluation: {
 				type: 'object',
-				description: 'Quality evaluation of the reasoning trace from cipher_evaluate_reasoning',
+				description: 'Quality evaluation of the reasoning trace from matrix_evaluate_reasoning',
 				properties: {
 					qualityScore: { type: 'number', minimum: 0, maximum: 1 },
 					efficiencyScore: { type: 'number', minimum: 0, maximum: 1 },
@@ -173,7 +173,7 @@ export const storeReasoningMemoryTool: InternalTool = {
 			// Validate trace parameter
 			if (!trace) {
 				validationErrors.push(
-					'trace parameter is missing - ensure cipher_extract_reasoning_steps was called successfully'
+					'trace parameter is missing - ensure matrix_extract_reasoning_steps was called successfully'
 				);
 			} else if (typeof trace !== 'object') {
 				validationErrors.push('trace must be an object');
@@ -194,7 +194,7 @@ export const storeReasoningMemoryTool: InternalTool = {
 			// Validate evaluation parameter
 			if (!evaluation) {
 				validationErrors.push(
-					'evaluation parameter is missing - ensure cipher_evaluate_reasoning was called successfully'
+					'evaluation parameter is missing - ensure matrix_evaluate_reasoning was called successfully'
 				);
 			} else if (typeof evaluation !== 'object') {
 				validationErrors.push('evaluation must be an object');
@@ -221,7 +221,7 @@ export const storeReasoningMemoryTool: InternalTool = {
 						stored: false,
 						validationErrors,
 						suggestion:
-							'Ensure both cipher_extract_reasoning_steps and cipher_evaluate_reasoning completed successfully before calling store_reasoning_memory',
+							'Ensure both matrix_extract_reasoning_steps and matrix_evaluate_reasoning completed successfully before calling store_reasoning_memory',
 					},
 					metadata: {
 						toolName: 'store_reasoning_memory',

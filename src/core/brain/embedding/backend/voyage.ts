@@ -1,7 +1,7 @@
 /**
  * Voyage Embedding Backend
  *
- * Implementation of the Voyage AI embedding provider for the Cipher embedding system.
+ * Implementation of the Voyage AI embedding provider for the Matrix embedding system.
  * Provides support for Voyage's embedding models including voyage-3-large.
  */
 

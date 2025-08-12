@@ -1,7 +1,7 @@
 /**
  * Aggregator MCP Handler for exposing aggregated tools as a unified MCP server.
  *
- * This file contains the handler for running Cipher in aggregator mode,
+ * This file contains the handler for running Matrix in aggregator mode,
  * using the same working connection logic as default mode but exposing all tools.
  */
 
@@ -33,7 +33,7 @@ export async function initializeAggregatorServer(
 	// Create MCP server instance (same as default mode)
 	const server = new Server(
 		{
-			name: 'cipher-aggregator',
+			name: 'matrix-aggregator',
 			version: '1.0.0',
 		},
 		{
@@ -72,16 +72,16 @@ export async function initializeAggregatorServer(
 }
 
 /**
- * Handle the ask_cipher tool execution
+ * Handle the ask_matrix tool execution
  */
-async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
+async function handleAskMatrixTool(agent: MemAgent, args: any): Promise<any> {
 	const { message, session_id = 'default' } = args;
 
 	if (!message || typeof message !== 'string') {
 		throw new Error('Message parameter is required and must be a string');
 	}
 
-	logger.info('[Aggregator Handler] Processing ask_cipher request', {
+	logger.info('[Aggregator Handler] Processing ask_matrix request', {
 		sessionId: session_id,
 		messageLength: message.length,
 	});
@@ -99,7 +99,7 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 		};
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error('[Aggregator Handler] Error in ask_cipher tool', { error: errorMessage });
+		logger.error('[Aggregator Handler] Error in ask_matrix tool', { error: errorMessage });
 		throw new Error(`Agent execution failed: ${errorMessage}`);
 	}
 }
@@ -129,7 +129,7 @@ async function registerAggregatedTools(
 		if (resolvedTools.has(toolName)) {
 			switch (conflictResolution) {
 				case 'prefix':
-					resolvedName = `cipher.${toolName}`;
+					resolvedName = `matrix.${toolName}`;
 					logger.info(
 						`[Aggregator Handler] Tool name conflict resolved: ${toolName} -> ${resolvedName}`
 					);
@@ -156,18 +156,18 @@ async function registerAggregatedTools(
 		inputSchema: (tool as any).parameters,
 	}));
 
-	// For backward compatibility, ensure ask_cipher is always present
-	if (!mcpTools.find(t => t.name === 'ask_cipher')) {
+	// For backward compatibility, ensure ask_matrix is always present
+	if (!mcpTools.find(t => t.name === 'ask_matrix')) {
 		mcpTools.push({
-			name: 'ask_cipher',
+			name: 'ask_matrix',
 			description:
-				'Access Cipher memory layer for information storage and retrieval. Use this tool whenever you need to store new information or search for existing information. Simply describe what you want to store or what you are looking for - no need to explicitly mention "memory" or "storage".',
+				'Access Matrix memory layer for information storage and retrieval. Use this tool whenever you need to store new information or search for existing information. Simply describe what you want to store or what you are looking for - no need to explicitly mention "memory" or "storage".',
 			inputSchema: {
 				type: 'object',
 				properties: {
 					message: {
 						type: 'string',
-						description: 'The message or question to send to the Cipher agent',
+						description: 'The message or question to send to the Matrix agent',
 					},
 					session_id: {
 						type: 'string',
@@ -199,8 +199,8 @@ async function registerAggregatedTools(
 		const { name, arguments: args } = request.params;
 		logger.info(`[Aggregator Handler] Tool called: ${name}`, { toolName: name, args });
 
-		if (name === 'ask_cipher') {
-			return await handleAskCipherTool(agent, args);
+		if (name === 'ask_matrix') {
+			return await handleAskMatrixTool(agent, args);
 		}
 
 		// Route to unifiedToolManager for all other tools (like default mode)

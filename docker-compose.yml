@@ -1,27 +1,27 @@
 version: '3.8'
 
 services:
-  cipher-api:
+  matrix-api:
     build: .
     ports:
       - '3000:3000'
     environment:
       - PORT=3000
       - NODE_ENV=production
-      - CIPHER_MULTI_BACKEND=1
-      - CIPHER_PG_URL=postgres://username:password@postgres:5432/cipherdb # Update with your actual credentials
-      - CIPHER_WAL_FLUSH_INTERVAL=5000 # Optional: flush interval in ms
+      - MATRIX_MULTI_BACKEND=1
+      - MATRIX_PG_URL=postgres://username:password@postgres:5432/matrixdb # Update with your actual credentials
+      - MATRIX_WAL_FLUSH_INTERVAL=5000 # Optional: flush interval in ms
     env_file:
       - .env
     command:
       [
         'sh',
         '-c',
-        'node dist/src/app/index.cjs --mode api --port 3000 --host 0.0.0.0 --agent /app/memAgent/cipher.yml',
+        'node dist/src/app/index.cjs --mode api --port 3000 --host 0.0.0.0 --agent /app/memAgent/matrix.yml',
       ]
     volumes:
       - ./memAgent:/app/memAgent:ro # Mount custom agent config
-      - cipher-data:/app/.cipher # Persist application data
+      - matrix-data:/app/.matrix # Persist application data
     restart: unless-stopped
     healthcheck:
       test:
@@ -48,5 +48,5 @@ services:
       - pgdata:/var/lib/postgresql/data
 
 volumes:
-  cipher-data:
+  matrix-data:
   pgdata:

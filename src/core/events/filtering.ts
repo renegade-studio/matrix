@@ -438,11 +438,11 @@ export class CommonFilters {
 			'session:created',
 			'session:expired',
 			'session:deleted',
-			'cipher:mcpClientConnected',
-			'cipher:mcpClientDisconnected',
-			'cipher:mcpClientError',
-			'cipher:toolError',
-			'cipher:serviceError',
+			'matrix:mcpClientConnected',
+			'matrix:mcpClientDisconnected',
+			'matrix:mcpClientError',
+			'matrix:toolError',
+			'matrix:serviceError',
 		];
 
 		return (event: EventEnvelope) => {

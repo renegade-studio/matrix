@@ -60,7 +60,7 @@ export interface StorageFactory {
  * ```
  */
 export async function createStorageBackends(config: StorageConfig): Promise<StorageFactory> {
-	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
+	const logger = createLogger({ level: env.MATRIX_LOG_LEVEL });
 
 	logger.debug(`${LOG_PREFIXES.FACTORY} Creating storage system`, {
 		cacheType: config.cache.type,
@@ -141,7 +141,7 @@ export async function createDefaultStorage(): Promise<StorageFactory> {
  * ```
  */
 export async function createStorageFromEnv(): Promise<StorageFactory> {
-	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
+	const logger = createLogger({ level: env.MATRIX_LOG_LEVEL });
 
 	// Build cache configuration from environment
 	const cacheType = env.STORAGE_CACHE_TYPE;

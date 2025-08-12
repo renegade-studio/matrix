@@ -122,8 +122,8 @@ function _createLLMService(
 				apiKey,
 				baseURL,
 				defaultHeaders: {
-					'HTTP-Referer': 'https://github.com/byterover/cipher',
-					'X-Title': 'Cipher Memory Agent',
+					'HTTP-Referer': 'https://github.com/byterover/matrix',
+					'X-Title': 'Matrix Memory Agent',
 				},
 			});
 			return new OpenRouterService(

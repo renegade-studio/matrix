@@ -93,9 +93,9 @@ describe('Phase 3: Service Integration Tests', () => {
 		it('should register all reflection memory tools', () => {
 			const tools = toolManager.getAllTools();
 
-			expect(tools).toHaveProperty('cipher_extract_reasoning_steps');
-			expect(tools).toHaveProperty('cipher_evaluate_reasoning');
-			expect(tools).toHaveProperty('cipher_search_reasoning_patterns');
+			expect(tools).toHaveProperty('matrix_extract_reasoning_steps');
+			expect(tools).toHaveProperty('matrix_evaluate_reasoning');
+			expect(tools).toHaveProperty('matrix_search_reasoning_patterns');
 
 			// Verify tool categories
 			const reflectionTools = toolManager.getToolsByCategory('memory');

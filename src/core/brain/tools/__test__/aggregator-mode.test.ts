@@ -50,7 +50,7 @@ const mockInternalToolManager = {
 				description: 'Extract and operate memory tool',
 				parameters: { type: 'object', properties: {} },
 			},
-			cipher_extract_and_operate_memory: {
+			matrix_extract_and_operate_memory: {
 				name: 'extract_and_operate_memory',
 				agentAccessible: false,
 				description: 'Extract and operate memory tool',
@@ -62,7 +62,7 @@ const mockInternalToolManager = {
 				description: 'Memory search tool',
 				parameters: { type: 'object', properties: {} },
 			},
-			cipher_memory_search: {
+			matrix_memory_search: {
 				name: 'memory_search',
 				agentAccessible: true,
 				description: 'Memory search tool',
@@ -71,7 +71,7 @@ const mockInternalToolManager = {
 		};
 		return tools[name];
 	},
-	isInternalTool: (name: string) => name.includes('cipher_') || name.includes('memory'),
+	isInternalTool: (name: string) => name.includes('matrix_') || name.includes('memory'),
 	executeTool: async () => 'internal result',
 } as unknown as InternalToolManager;
 
@@ -100,7 +100,7 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 	});
 
 	describe('Default Mode', () => {
-		it('should NOT expose cipher_extract_and_operate_memory in default mode', async () => {
+		it('should NOT expose matrix_extract_and_operate_memory in default mode', async () => {
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'default',
 			});
@@ -109,39 +109,39 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 
 			const allTools = await manager.getAllTools();
 
-			// cipher_extract_and_operate_memory should NOT be in the tools list
-			expect(allTools).not.toHaveProperty('cipher_extract_and_operate_memory');
+			// matrix_extract_and_operate_memory should NOT be in the tools list
+			expect(allTools).not.toHaveProperty('matrix_extract_and_operate_memory');
 
-			// In default mode, only ask_cipher should be present
-			expect(allTools).toHaveProperty('ask_cipher');
+			// In default mode, only ask_matrix should be present
+			expect(allTools).toHaveProperty('ask_matrix');
 			expect(Object.keys(allTools)).toHaveLength(1);
 		});
 
-		it('should return false for isToolAvailable for cipher_extract_and_operate_memory in default mode', async () => {
+		it('should return false for isToolAvailable for matrix_extract_and_operate_memory in default mode', async () => {
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'default',
 			});
 			// Set up mock embedding manager
 			manager.setEmbeddingManager(mockEmbeddingManager);
 
-			const isAvailable = await manager.isToolAvailable('cipher_extract_and_operate_memory');
+			const isAvailable = await manager.isToolAvailable('matrix_extract_and_operate_memory');
 			expect(isAvailable).toBe(false);
 		});
 
-		it('should return null for getToolSource for cipher_extract_and_operate_memory in default mode', async () => {
+		it('should return null for getToolSource for matrix_extract_and_operate_memory in default mode', async () => {
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'default',
 			});
 			// Set up mock embedding manager
 			manager.setEmbeddingManager(mockEmbeddingManager);
 
-			const source = await manager.getToolSource('cipher_extract_and_operate_memory');
+			const source = await manager.getToolSource('matrix_extract_and_operate_memory');
 			expect(source).toBe(null);
 		});
 	});
 
 	describe('Aggregator Mode', () => {
-		it('should expose cipher_extract_and_operate_memory in aggregator mode', async () => {
+		it('should expose matrix_extract_and_operate_memory in aggregator mode', async () => {
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'aggregator',
 			});
@@ -150,37 +150,37 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 
 			const allTools = await manager.getAllTools();
 
-			// cipher_extract_and_operate_memory SHOULD be in the tools list
-			expect(allTools).toHaveProperty('cipher_extract_and_operate_memory');
-			expect(allTools['cipher_extract_and_operate_memory']).toEqual({
+			// matrix_extract_and_operate_memory SHOULD be in the tools list
+			expect(allTools).toHaveProperty('matrix_extract_and_operate_memory');
+			expect(allTools['matrix_extract_and_operate_memory']).toEqual({
 				description: 'Extract and operate memory tool',
 				parameters: { type: 'object', properties: {} },
 				source: 'internal',
 			});
 
 			// Other agent-accessible tools should still be present
-			expect(allTools).toHaveProperty('cipher_memory_search');
+			expect(allTools).toHaveProperty('matrix_memory_search');
 		});
 
-		it('should return true for isToolAvailable for cipher_extract_and_operate_memory in aggregator mode', async () => {
+		it('should return true for isToolAvailable for matrix_extract_and_operate_memory in aggregator mode', async () => {
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'aggregator',
 			});
 			// Set up mock embedding manager
 			manager.setEmbeddingManager(mockEmbeddingManager);
 
-			const isAvailable = await manager.isToolAvailable('cipher_extract_and_operate_memory');
+			const isAvailable = await manager.isToolAvailable('matrix_extract_and_operate_memory');
 			expect(isAvailable).toBe(true);
 		});
 
-		it('should return "internal" for getToolSource for cipher_extract_and_operate_memory in aggregator mode', async () => {
+		it('should return "internal" for getToolSource for matrix_extract_and_operate_memory in aggregator mode', async () => {
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'aggregator',
 			});
 			// Set up mock embedding manager
 			manager.setEmbeddingManager(mockEmbeddingManager);
 
-			const source = await manager.getToolSource('cipher_extract_and_operate_memory');
+			const source = await manager.getToolSource('matrix_extract_and_operate_memory');
 			expect(source).toBe('internal');
 		});
 	});
@@ -197,7 +197,7 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 			const allTools = await manager.getAllTools();
 
 			// Should respect the explicit config over environment variable
-			expect(allTools).toHaveProperty('cipher_extract_and_operate_memory');
+			expect(allTools).toHaveProperty('matrix_extract_and_operate_memory');
 		});
 	});
 });

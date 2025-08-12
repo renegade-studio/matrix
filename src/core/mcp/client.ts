@@ -118,7 +118,7 @@ export class MCPClient implements IMCPClient {
 			// Create and connect the client
 			this.client = new Client(
 				{
-					name: `cipher-mcp-client-${serverName}`,
+					name: `matrix-mcp-client-${serverName}`,
 					version: '1.0.0',
 				},
 				{

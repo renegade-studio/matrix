@@ -1,4 +1,4 @@
-# Strict Memory Layer (Cipher)
+# Strict Memory Layer (Matrix)
 
 > 🧠 **Dedicated memory service for external agents: fast storage & retrieval**
 
@@ -10,9 +10,9 @@ export OPENAI_API_KEY=your_openai_api_key
 export ANTHROPIC_API_KEY=your_anthropic_api_key
 ```
 
-2. **Launch Cipher as MCP Server:**
+2. **Launch Matrix as MCP Server:**
 ```bash
-cipher --mode mcp --agent ./examples/03-strict-memory-layer/cipher.yml
+matrix --mode mcp --agent ./examples/03-strict-memory-layer/matrix.yml
 ```
 
 3. **MCP Client Config Example**
@@ -20,11 +20,11 @@ cipher --mode mcp --agent ./examples/03-strict-memory-layer/cipher.yml
 ```json
 {
   "mcpServers": {
-    "cipher": {
-      "command": "cipher",
+    "matrix": {
+      "command": "matrix",
       "args": [
         "--mode", "mcp",
-        "--agent", "./examples/03-strict-memory-layer/cipher.yml"
+        "--agent", "./examples/03-strict-memory-layer/matrix.yml"
       ],
       "env": {
         "MCP_SERVER_MODE": "default",
@@ -44,7 +44,7 @@ cipher --mode mcp --agent ./examples/03-strict-memory-layer/cipher.yml
 ```
 
 ## Usage
-- **Only one tool:** `ask_cipher` (handles both storage & retrieval)
+- **Only one tool:** `ask_matrix` (handles both storage & retrieval)
 
 
 ## Features
@@ -55,7 +55,7 @@ cipher --mode mcp --agent ./examples/03-strict-memory-layer/cipher.yml
 ## Troubleshooting
 - Ensure API keys are set
 - Use MCP_SERVER_MODE=default for strict memory layer
-- Only `ask_cipher` is available in this mode
+- Only `ask_matrix` is available in this mode
 
 ---
 This setup provides a pure memory layer for agents, optimized for fast, reliable storage and retrieval.

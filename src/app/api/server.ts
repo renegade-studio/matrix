@@ -105,7 +105,7 @@ export class ApiServer {
 
 	/**
 	 * Load aggregator configuration from environment variables
-	 * Aggregator mode now uses agent's unifiedToolManager which automatically includes MCP servers from cipher.yml
+	 * Aggregator mode now uses agent's unifiedToolManager which automatically includes MCP servers from matrix.yml
 	 */
 	private async loadAggregatorConfig(): Promise<any> {
 		const defaultConfig = {

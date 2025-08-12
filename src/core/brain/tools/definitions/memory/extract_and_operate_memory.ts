@@ -35,7 +35,7 @@ function isSignificantKnowledge(content: string): boolean {
 		/^(user:|assistant:)?\s*(hello|hi|hey|good morning|good afternoon|good evening|thanks|thank you|please|sorry|excuse me|bye|goodbye)\b/i,
 
 		// Tool results with no meaningful content
-		/^(cipher_memory_search|memory_search):\s*(found|completed|no results|error)/i,
+		/^(matrix_memory_search|memory_search):\s*(found|completed|no results|error)/i,
 
 		// Generic status messages
 		/^(task completed|operation successful|processing|loading|waiting|done|finished|ready)\b/i,
@@ -239,7 +239,7 @@ function isRetrievedResult(content: string): boolean {
 
 	// Heuristics: look for typical result markers or tool result prefixes
 	const retrievedPatterns = [
-		/^(cipher_memory_search|memory_search|cipher_search_reasoning_patterns|search_reasoning_patterns|search_graph|query_graph|enhanced_search):/i,
+		/^(matrix_memory_search|memory_search|matrix_search_reasoning_patterns|search_reasoning_patterns|search_graph|query_graph|enhanced_search):/i,
 		/^(retrieved|result|results|found|matches|nodes|edges|search completed|query executed|suggestions?):/i,
 		/^(knowledge results|reflection results|reasoning patterns|graph nodes|graph edges):/i,
 		/^(reasoning trace|evaluation|step count|quality score|issue count):/i,

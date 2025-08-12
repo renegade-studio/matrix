@@ -316,7 +316,7 @@ llm:
 			await loadAgentConfig('/custom/path/config.yml');
 
 			expect(logger.debug).toHaveBeenCalledWith(
-				'Loading cipher config from: /custom/path/config.yml'
+				'Loading matrix config from: /custom/path/config.yml'
 			);
 		});
 

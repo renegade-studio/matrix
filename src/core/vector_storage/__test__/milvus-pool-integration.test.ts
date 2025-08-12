@@ -43,7 +43,7 @@ vi.mock('../../logger/index.js', () => {
 // Mock environment variables
 vi.mock('../../env.js', () => ({
 	env: {
-		CIPHER_LOG_LEVEL: 'debug',
+		MATRIX_LOG_LEVEL: 'debug',
 		VECTOR_STORE_URL: 'http://localhost:19530',
 		VECTOR_STORE_USERNAME: 'test-user',
 		VECTOR_STORE_PASSWORD: 'test-pass',

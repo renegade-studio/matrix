@@ -107,12 +107,12 @@ describe('InternalToolManager', () => {
 			expect(result.message).toContain('validation failed');
 		});
 
-		it('should normalize tool names with cipher_ prefix', () => {
+		it('should normalize tool names with matrix_ prefix', () => {
 			const result = manager.registerTool(testTool);
 			expect(result.success).toBe(true);
 
 			const retrievedTool = manager.getTool('test_tool');
-			expect(retrievedTool?.name).toBe('cipher_test_tool');
+			expect(retrievedTool?.name).toBe('matrix_test_tool');
 		});
 	});
 
@@ -143,13 +143,13 @@ describe('InternalToolManager', () => {
 		it('should retrieve all tools', () => {
 			const tools = manager.getAllTools();
 			expect(Object.keys(tools)).toHaveLength(1);
-			expect(tools['cipher_test_tool']).toBeDefined();
+			expect(tools['matrix_test_tool']).toBeDefined();
 		});
 
 		it('should retrieve tool by name', () => {
 			const tool = manager.getTool('test_tool');
 			expect(tool).toBeDefined();
-			expect(tool?.name).toBe('cipher_test_tool');
+			expect(tool?.name).toBe('matrix_test_tool');
 		});
 
 		it('should retrieve tools by category', () => {
@@ -161,7 +161,7 @@ describe('InternalToolManager', () => {
 		});
 
 		it('should check if tool is internal', () => {
-			expect(manager.isInternalTool('cipher_test_tool')).toBe(true);
+			expect(manager.isInternalTool('matrix_test_tool')).toBe(true);
 			expect(manager.isInternalTool('external_tool')).toBe(false);
 		});
 	});
@@ -235,7 +235,7 @@ describe('InternalToolManager', () => {
 
 		it('should throw error for non-existent tool', async () => {
 			await expect(manager.executeTool('non_existent', {})).rejects.toThrow(
-				"Internal tool 'cipher_non_existent' not found"
+				"Internal tool 'matrix_non_existent' not found"
 			);
 		});
 	});

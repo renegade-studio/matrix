@@ -1,7 +1,7 @@
 /**
  * Internal Tools Module
  *
- * This module provides internal tools for the Cipher agent, including
+ * This module provides internal tools for the Matrix agent, including
  * memory management, session control, and system operations.
  *
  * @example
@@ -15,7 +15,7 @@
  * const result = manager.registerTool(myTool);
  *
  * // Execute a tool
- * const output = await manager.executeTool('cipher_my_tool', args);
+ * const output = await manager.executeTool('matrix_my_tool', args);
  * ```
  */
 

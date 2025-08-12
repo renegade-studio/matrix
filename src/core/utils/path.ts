@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 /**
  * The default path to the agent config file
  */
-export const DEFAULT_CONFIG_PATH = 'memAgent/cipher.yml';
+export const DEFAULT_CONFIG_PATH = 'memAgent/matrix.yml';
 
 /**
  * Resolve the configuration file path.

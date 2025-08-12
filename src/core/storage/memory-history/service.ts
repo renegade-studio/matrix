@@ -34,7 +34,7 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 	private schemaInitialized = false;
 
 	constructor() {
-		this.logger = createLogger({ level: env.CIPHER_LOG_LEVEL || 'info' });
+		this.logger = createLogger({ level: env.MATRIX_LOG_LEVEL || 'info' });
 	}
 
 	/**

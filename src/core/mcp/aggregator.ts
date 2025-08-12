@@ -61,7 +61,7 @@ export class AggregatorMCPManager extends MCPManager implements IAggregatorManag
 		// Create MCP server instance
 		this.server = new Server(
 			{
-				name: 'cipher-aggregator',
+				name: 'matrix-aggregator',
 				version: '1.0.0',
 			},
 			{

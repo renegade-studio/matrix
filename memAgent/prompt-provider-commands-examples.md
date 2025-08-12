@@ -1,6 +1,6 @@
 # Prompt Provider Commands: Example Usage
 
-Below are example usages for all prompt-related commands in Cipher CLI. Each example includes a sample command and a dropdown with the expected output/result.
+Below are example usages for all prompt-related commands in Matrix CLI. Each example includes a sample command and a dropdown with the expected output/result.
 
 ---
 

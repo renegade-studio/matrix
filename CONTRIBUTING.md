@@ -1,6 +1,6 @@
-# Contributing to Cipher
+# Contributing to Matrix
 
-Thank you for your interest in contributing to **cipher**! We're excited to have you as part of our community building the next generation of agent memory systems with Model Context Protocol (MCP).
+Thank you for your interest in contributing to **matrix**! We're excited to have you as part of our community building the next generation of agent memory systems with Model Context Protocol (MCP).
 
 ## 🚀 Quick Start
 
@@ -18,8 +18,8 @@ Before you begin, ensure you have:
 2. **Clone** your fork:
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/cipher.git
-   cd cipher
+   git clone https://github.com/YOUR_USERNAME/matrix.git
+   cd matrix
    ```
 
 ### 2. Set Up Development Environment
@@ -132,7 +132,7 @@ src/
 ### ✨ New Features
 
 - **Open an issue first** for discussion on larger features
-- Ensure the feature aligns with cipher's core mission
+- Ensure the feature aligns with matrix's core mission
 - Include comprehensive tests and documentation
 - Update configuration schemas if needed
 
@@ -211,7 +211,7 @@ When reporting bugs, include:
 2. **Reproduction steps**: Minimal code example that demonstrates the issue
 3. **Expected behavior**: What should happen
 4. **Actual behavior**: What actually happens
-5. **Configuration**: Relevant parts of your `cipher.yml` and `.env` (redact API keys)
+5. **Configuration**: Relevant parts of your `matrix.yml` and `.env` (redact API keys)
 6. **Logs**: Any error messages or relevant log output
 
 ## 💡 Feature Requests
@@ -239,7 +239,7 @@ We follow semantic versioning:
 
 ## 📜 License
 
-By contributing to cipher, you agree that your contributions will be licensed under the [Elastic License 2.0](LICENSE).
+By contributing to matrix, you agree that your contributions will be licensed under the [Elastic License 2.0](LICENSE).
 
 ---
 

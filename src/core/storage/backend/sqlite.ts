@@ -63,7 +63,7 @@ export class SqliteBackend implements DatabaseBackend {
 
 		// Construct database path
 		const dbPath = config.path || './data';
-		const dbName = config.database || 'cipher.db';
+		const dbName = config.database || 'matrix.db';
 		this.dbPath = join(dbPath, dbName);
 
 		this.logger.debug('SQLite backend initialized', {

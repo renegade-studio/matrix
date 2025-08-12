@@ -2,7 +2,7 @@
  * Memory Configuration Schema
  *
  * Comprehensive Zod schemas for validating YAML configuration files
- * that define custom memory types in the Cipher system.
+ * that define custom memory types in the Matrix system.
  */
 
 import { z } from 'zod';

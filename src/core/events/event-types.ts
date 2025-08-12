@@ -1,29 +1,29 @@
-// Service-level events (global to cipher instance)
+// Service-level events (global to matrix instance)
 export interface ServiceEventMap {
-	// Cipher lifecycle events
-	'cipher:started': { timestamp: number; version?: string };
-	'cipher:stopped': { timestamp: number; reason?: string };
-	'cipher:error': { error: string; stack?: string; timestamp: number };
+	// Matrix lifecycle events
+	'matrix:started': { timestamp: number; version?: string };
+	'matrix:stopped': { timestamp: number; reason?: string };
+	'matrix:error': { error: string; stack?: string; timestamp: number };
 
 	// Service initialization events
-	'cipher:serviceStarted': { serviceType: string; timestamp: number };
-	'cipher:serviceError': { serviceType: string; error: string; timestamp: number };
-	'cipher:allServicesReady': { timestamp: number; services: string[] };
+	'matrix:serviceStarted': { serviceType: string; timestamp: number };
+	'matrix:serviceError': { serviceType: string; error: string; timestamp: number };
+	'matrix:allServicesReady': { timestamp: number; services: string[] };
 
 	// Tool registration events
-	'cipher:toolRegistered': { toolName: string; toolType: 'internal' | 'mcp'; timestamp: number };
-	'cipher:toolUnregistered': { toolName: string; toolType: 'internal' | 'mcp'; timestamp: number };
-	'cipher:toolError': { toolName: string; error: string; timestamp: number };
+	'matrix:toolRegistered': { toolName: string; toolType: 'internal' | 'mcp'; timestamp: number };
+	'matrix:toolUnregistered': { toolName: string; toolType: 'internal' | 'mcp'; timestamp: number };
+	'matrix:toolError': { toolName: string; error: string; timestamp: number };
 
 	// MCP connection events
-	'cipher:mcpClientConnected': { clientId: string; serverName: string; timestamp: number };
-	'cipher:mcpClientDisconnected': {
+	'matrix:mcpClientConnected': { clientId: string; serverName: string; timestamp: number };
+	'matrix:mcpClientDisconnected': {
 		clientId: string;
 		serverName: string;
 		reason?: string;
 		timestamp: number;
 	};
-	'cipher:mcpClientError': {
+	'matrix:mcpClientError': {
 		clientId: string;
 		serverName: string;
 		error: string;
@@ -31,14 +31,14 @@ export interface ServiceEventMap {
 	};
 
 	// Memory operations
-	'cipher:memoryOperationStarted': { operation: string; sessionId?: string; timestamp: number };
-	'cipher:memoryOperationCompleted': {
+	'matrix:memoryOperationStarted': { operation: string; sessionId?: string; timestamp: number };
+	'matrix:memoryOperationCompleted': {
 		operation: string;
 		sessionId?: string;
 		duration: number;
 		timestamp: number;
 	};
-	'cipher:memoryOperationFailed': {
+	'matrix:memoryOperationFailed': {
 		operation: string;
 		sessionId?: string;
 		error: string;
@@ -46,13 +46,13 @@ export interface ServiceEventMap {
 	};
 
 	// Vector store events
-	'cipher:vectorStoreConnected': { provider: string; timestamp: number };
-	'cipher:vectorStoreDisconnected': { provider: string; reason?: string; timestamp: number };
-	'cipher:vectorStoreError': { provider: string; error: string; timestamp: number };
+	'matrix:vectorStoreConnected': { provider: string; timestamp: number };
+	'matrix:vectorStoreDisconnected': { provider: string; reason?: string; timestamp: number };
+	'matrix:vectorStoreError': { provider: string; error: string; timestamp: number };
 
 	// LLM service events
-	'cipher:llmProviderRegistered': { provider: string; timestamp: number };
-	'cipher:llmProviderError': { provider: string; error: string; timestamp: number };
+	'matrix:llmProviderRegistered': { provider: string; timestamp: number };
+	'matrix:llmProviderError': { provider: string; error: string; timestamp: number };
 
 	// Lazy loading events
 	'lazy-memory:loading': { componentType: string; timestamp: number };
@@ -183,26 +183,26 @@ export type EventTransformer<T = any, R = any> = (event: EventEnvelope<T>) => Ev
 
 // Event constants to prevent typos
 export const ServiceEvents = {
-	CIPHER_STARTED: 'cipher:started' as const,
-	CIPHER_STOPPED: 'cipher:stopped' as const,
-	CIPHER_ERROR: 'cipher:error' as const,
-	SERVICE_STARTED: 'cipher:serviceStarted' as const,
-	SERVICE_ERROR: 'cipher:serviceError' as const,
-	ALL_SERVICES_READY: 'cipher:allServicesReady' as const,
-	TOOL_REGISTERED: 'cipher:toolRegistered' as const,
-	TOOL_UNREGISTERED: 'cipher:toolUnregistered' as const,
-	TOOL_ERROR: 'cipher:toolError' as const,
-	MCP_CLIENT_CONNECTED: 'cipher:mcpClientConnected' as const,
-	MCP_CLIENT_DISCONNECTED: 'cipher:mcpClientDisconnected' as const,
-	MCP_CLIENT_ERROR: 'cipher:mcpClientError' as const,
-	MEMORY_OPERATION_STARTED: 'cipher:memoryOperationStarted' as const,
-	MEMORY_OPERATION_COMPLETED: 'cipher:memoryOperationCompleted' as const,
-	MEMORY_OPERATION_FAILED: 'cipher:memoryOperationFailed' as const,
-	VECTOR_STORE_CONNECTED: 'cipher:vectorStoreConnected' as const,
-	VECTOR_STORE_DISCONNECTED: 'cipher:vectorStoreDisconnected' as const,
-	VECTOR_STORE_ERROR: 'cipher:vectorStoreError' as const,
-	LLM_PROVIDER_REGISTERED: 'cipher:llmProviderRegistered' as const,
-	LLM_PROVIDER_ERROR: 'cipher:llmProviderError' as const,
+	MATRIX_STARTED: 'matrix:started' as const,
+	MATRIX_STOPPED: 'matrix:stopped' as const,
+	MATRIX_ERROR: 'matrix:error' as const,
+	SERVICE_STARTED: 'matrix:serviceStarted' as const,
+	SERVICE_ERROR: 'matrix:serviceError' as const,
+	ALL_SERVICES_READY: 'matrix:allServicesReady' as const,
+	TOOL_REGISTERED: 'matrix:toolRegistered' as const,
+	TOOL_UNREGISTERED: 'matrix:toolUnregistered' as const,
+	TOOL_ERROR: 'matrix:toolError' as const,
+	MCP_CLIENT_CONNECTED: 'matrix:mcpClientConnected' as const,
+	MCP_CLIENT_DISCONNECTED: 'matrix:mcpClientDisconnected' as const,
+	MCP_CLIENT_ERROR: 'matrix:mcpClientError' as const,
+	MEMORY_OPERATION_STARTED: 'matrix:memoryOperationStarted' as const,
+	MEMORY_OPERATION_COMPLETED: 'matrix:memoryOperationCompleted' as const,
+	MEMORY_OPERATION_FAILED: 'matrix:memoryOperationFailed' as const,
+	VECTOR_STORE_CONNECTED: 'matrix:vectorStoreConnected' as const,
+	VECTOR_STORE_DISCONNECTED: 'matrix:vectorStoreDisconnected' as const,
+	VECTOR_STORE_ERROR: 'matrix:vectorStoreError' as const,
+	LLM_PROVIDER_REGISTERED: 'matrix:llmProviderRegistered' as const,
+	LLM_PROVIDER_ERROR: 'matrix:llmProviderError' as const,
 } as const;
 
 export const SessionEvents = {

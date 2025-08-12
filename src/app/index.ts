@@ -38,11 +38,11 @@ const detectAndRedirectMcpLogs = () => {
 
 	if (isMcpMode) {
 		// Redirect logs immediately to prevent stdout contamination
-		const logFile = process.env.CIPHER_MCP_LOG_FILE || path.join(os.tmpdir(), 'cipher-mcp.log');
+		const logFile = process.env.MATRIX_MCP_LOG_FILE || path.join(os.tmpdir(), 'matrix-mcp.log');
 		logger.redirectToFile(logFile);
 
 		// Use stderr for critical startup messages only
-		process.stderr.write(`[CIPHER-MCP] Log redirection activated: ${logFile}\n`);
+		process.stderr.write(`[MATRIX-MCP] Log redirection activated: ${logFile}\n`);
 	}
 };
 
@@ -52,18 +52,18 @@ detectAndRedirectMcpLogs();
 const program = new Command();
 
 program
-	.name('cipher')
+	.name('matrix')
 	.description('Agent that can help to remember your vibe coding agent knowledge and reinforce it')
 	.version(pkg.version, '-v, --version', 'output the current version')
 	.argument(
 		'[prompt...]',
-		'Natural-language prompt to run once. If not passed, cipher will start in interactive mode'
+		'Natural-language prompt to run once. If not passed, matrix will start in interactive mode'
 	)
 	.option('--no-verbose', 'Disable verbose output')
 	.option('-a, --agent <path>', 'Path to agent config file', DEFAULT_CONFIG_PATH)
 	.option('-s, --strict', 'Require all MCP server connections to succeed')
 	.option('--new-session [sessionId]', 'Start with a new session (optionally specify session ID)')
-	.option('--mode <mode>', 'The application mode for cipher memory agent - cli | mcp | api', 'cli')
+	.option('--mode <mode>', 'The application mode for matrix memory agent - cli | mcp | api', 'cli')
 	.option('--port <port>', 'Port for API server (only used with --mode api)', '3000')
 	.option('--host <host>', 'Host for API server (only used with --mode api)', 'localhost')
 	.option(
@@ -75,8 +75,8 @@ program
 
 program
 	.description(
-		'Cipher CLI allows you to interact with cipher memory agent.\n' +
-			'Run cipher in interactive mode with `cipher` or run a one-shot prompt with `cipher <prompt>`\n\n' +
+		'Matrix CLI allows you to interact with matrix memory agent.\n' +
+			'Run matrix in interactive mode with `matrix` or run a one-shot prompt with `matrix <prompt>`\n\n' +
 			'Available modes:\n' +
 			'  - cli: Interactive command-line interface (default)\n' +
 			'  - mcp: Model Context Protocol server mode\n' +
@@ -88,7 +88,7 @@ program
 			'  --host <host>: Host for API server (default: localhost, only used with --mode api)'
 	)
 	/**
-	 * Main CLI action handler for the Cipher agent.
+	 * Main CLI action handler for the Matrix agent.
 	 *
 	 * Strict Mode Behavior:
 	 * When the --strict flag is used, all MCP server connectionMode properties
@@ -109,10 +109,10 @@ program
 	 * the agent's session management lifecycle and TTL settings.
 	 *
 	 * One-Shot Mode Behavior:
-	 * When prompt arguments are provided, cipher runs in headless mode:
+	 * When prompt arguments are provided, matrix runs in headless mode:
 	 * - Executes the prompt once and exits
 	 * - Works with all existing flags and options
-	 * - Example: cipher "help me debug this error"
+	 * - Example: matrix "help me debug this error"
 	 */
 	.action(async (prompt: string[] = []) => {
 		// Process prompt arguments for one-shot mode
@@ -143,7 +143,7 @@ program
 				'No API key or Ollama configuration found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OLLAMA_BASE_URL in your environment variables \nAvailable providers: OpenAI, Anthropic, OpenRouter, Ollama, Qwen';
 
 			if (opts.mode === 'mcp') {
-				process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
+				process.stderr.write(`[MATRIX-MCP] ERROR: ${errorMsg}\n`);
 			} else {
 				logger.error(errorMsg);
 			}
@@ -169,11 +169,11 @@ program
 				const configErrorMsg = `Config file not found at ${configPath}`;
 				const helpMsg =
 					opts.agent === DEFAULT_CONFIG_PATH
-						? 'Please ensure the config file exists or create one based on memAgent/cipher.yml'
+						? 'Please ensure the config file exists or create one based on memAgent/matrix.yml'
 						: `Please ensure the specified config file exists at ${configPath}`;
 
 				if (opts.mode === 'mcp') {
-					process.stderr.write(`[CIPHER-MCP] ERROR: ${configErrorMsg}\n[CIPHER-MCP] ${helpMsg}\n`);
+					process.stderr.write(`[MATRIX-MCP] ERROR: ${configErrorMsg}\n[MATRIX-MCP] ${helpMsg}\n`);
 				} else {
 					logger.error(configErrorMsg);
 					logger.error(helpMsg);
@@ -232,14 +232,14 @@ program
 				// Use stderr for MCP mode errors
 				if (opts.strict) {
 					process.stderr.write(
-						`[CIPHER-MCP] ERROR: Failed to load agent config from ${configPath} (strict mode enabled): ${errorMessage}\n`
+						`[MATRIX-MCP] ERROR: Failed to load agent config from ${configPath} (strict mode enabled): ${errorMessage}\n`
 					);
 					process.stderr.write(
-						`[CIPHER-MCP] Strict mode requires all MCP server connections to succeed. Check your MCP server configurations or run without --strict flag.\n`
+						`[MATRIX-MCP] Strict mode requires all MCP server connections to succeed. Check your MCP server configurations or run without --strict flag.\n`
 					);
 				} else {
 					process.stderr.write(
-						`[CIPHER-MCP] ERROR: Failed to load agent config from ${configPath}: ${errorMessage}\n`
+						`[MATRIX-MCP] ERROR: Failed to load agent config from ${configPath}: ${errorMessage}\n`
 					);
 				}
 			} else {
@@ -268,7 +268,7 @@ program
 				const errorMessage = err instanceof Error ? err.message : String(err);
 				if (opts.mode === 'mcp') {
 					process.stderr.write(
-						`[CIPHER-MCP] ERROR: Failed to execute headless command: ${errorMessage}\n`
+						`[MATRIX-MCP] ERROR: Failed to execute headless command: ${errorMessage}\n`
 					);
 				} else {
 					logger.error(`Failed to execute headless command: ${errorMessage}`);
@@ -304,7 +304,7 @@ program
 			} catch (error) {
 				const errorMsg = error instanceof Error ? error.message : String(error);
 				if (opts.mode === 'mcp') {
-					process.stderr.write(`[CIPHER-MCP] ERROR: Failed to start API server: ${errorMsg}\n`);
+					process.stderr.write(`[MATRIX-MCP] ERROR: Failed to start API server: ${errorMsg}\n`);
 				} else {
 					logger.error(`Failed to start API server: ${errorMsg}`);
 				}
@@ -315,7 +315,7 @@ program
 		// Enhanced shutdown hooks for all modes to ensure session persistence
 		const handleExit = async () => {
 			try {
-				logger.info('Cipher is shutting down...');
+				logger.info('Matrix is shutting down...');
 
 				// For CLI mode, emit session event first
 				if (opts.mode === 'cli') {
@@ -339,7 +339,7 @@ program
 					await agent.stop();
 				}
 
-				logger.info('Cipher shutdown completed');
+				logger.info('Matrix shutdown completed');
 			} catch (error) {
 				logger.error('Error during shutdown:', error);
 			} finally {
@@ -384,7 +384,7 @@ program
 			default: {
 				const errorMsg = `Unknown mode '${opts.mode}'. Use cli, mcp, or api.`;
 				if (opts.mode === 'mcp') {
-					process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
+					process.stderr.write(`[MATRIX-MCP] ERROR: ${errorMsg}\n`);
 				} else {
 					logger.error(errorMsg);
 				}

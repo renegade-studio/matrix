@@ -191,20 +191,20 @@ export class ConversationSession {
 			try {
 				if (this.historyEnabled) {
 					// Multi-backend config example (can be extended to use env/config)
-					const multiBackendEnabled = !!process.env.CIPHER_MULTI_BACKEND;
-					const flushIntervalMs = process.env.CIPHER_WAL_FLUSH_INTERVAL
-						? parseInt(process.env.CIPHER_WAL_FLUSH_INTERVAL, 10)
+					const multiBackendEnabled = !!process.env.MATRIX_MULTI_BACKEND;
+					const flushIntervalMs = process.env.MATRIX_WAL_FLUSH_INTERVAL
+						? parseInt(process.env.MATRIX_WAL_FLUSH_INTERVAL, 10)
 						: 5000;
 
 					if (multiBackendEnabled) {
 						// Example: primary = Postgres, backup = SQLite, WAL = in-memory
 						const primaryStorage = new StorageManager({
-							database: { type: 'postgres' as const, url: process.env.CIPHER_PG_URL },
+							database: { type: 'postgres' as const, url: process.env.MATRIX_PG_URL },
 							cache: { type: 'in-memory' as const },
 						});
 						await primaryStorage.connect();
 						const backupStorage = new StorageManager({
-							database: { type: 'sqlite' as const, path: './cipher-backup.db' },
+							database: { type: 'sqlite' as const, path: './matrix-backup.db' },
 							cache: { type: 'in-memory' as const },
 						});
 						await backupStorage.connect();
@@ -221,7 +221,7 @@ export class ConversationSession {
 					} else if (this.historyBackend === 'database') {
 						// Use the same storage configuration as the session manager
 						// This ensures both session data and conversation history use the same backend
-						const postgresUrl = process.env.CIPHER_PG_URL;
+						const postgresUrl = process.env.MATRIX_PG_URL;
 						const postgresHost = process.env.STORAGE_DATABASE_HOST;
 						const postgresDatabase = process.env.STORAGE_DATABASE_NAME;
 
@@ -259,7 +259,7 @@ export class ConversationSession {
 								database: {
 									type: 'sqlite' as const,
 									path: env.STORAGE_DATABASE_PATH || './data',
-									database: env.STORAGE_DATABASE_NAME || 'cipher-sessions.db',
+									database: env.STORAGE_DATABASE_NAME || 'matrix-sessions.db',
 								},
 								cache: { type: 'in-memory' as const },
 							};
@@ -576,7 +576,7 @@ export class ConversationSession {
 			const allTools = await this.services.unifiedToolManager.getAllTools();
 
 			// Check if the memory extraction tool is available
-			const memoryToolAvailable = allTools['cipher_extract_and_operate_memory'];
+			const memoryToolAvailable = allTools['matrix_extract_and_operate_memory'];
 
 			if (embeddingsDisabled || !memoryToolAvailable) {
 				logger.debug('ConversationSession: Memory extraction skipped', {
@@ -623,10 +623,10 @@ export class ConversationSession {
 				memoryMetadata = this.getSessionMetadata();
 			}
 
-			// Call the extract_and_operate_memory tool directly (with cipher_ prefix)
+			// Call the extract_and_operate_memory tool directly (with matrix_ prefix)
 			// Use executeToolWithoutLoading to avoid redundant tool loading
 			const memoryResult = await this.services.unifiedToolManager.executeToolWithoutLoading(
-				'cipher_extract_and_operate_memory',
+				'matrix_extract_and_operate_memory',
 				{
 					interaction: comprehensiveInteractionData,
 					context: mergedContext,
@@ -729,7 +729,7 @@ export class ConversationSession {
 
 			// Check if reflection memory tools are available (using pre-loaded tools)
 			const reflectionToolsAvailable =
-				allTools['cipher_extract_reasoning_steps'] && allTools['cipher_store_reasoning_memory'];
+				allTools['matrix_extract_reasoning_steps'] && allTools['matrix_store_reasoning_memory'];
 
 			if (embeddingsDisabled || !reflectionToolsAvailable) {
 				logger.debug('ConversationSession: Reflection memory processing skipped', {
@@ -788,7 +788,7 @@ export class ConversationSession {
 			let extractionResult: any;
 			try {
 				extractionResult = await this.services.unifiedToolManager.executeTool(
-					'cipher_extract_reasoning_steps',
+					'matrix_extract_reasoning_steps',
 					{
 						userInput: userInput,
 						options: {
@@ -840,7 +840,7 @@ export class ConversationSession {
 				);
 				// Directly call the evaluation tool using the non-thinking model
 				evaluationResult = await this.services.unifiedToolManager.executeTool(
-					'cipher_evaluate_reasoning',
+					'matrix_evaluate_reasoning',
 					{
 						trace: reasoningTrace,
 						options: {
@@ -882,7 +882,7 @@ export class ConversationSession {
 			// Step 3: Store the unified reasoning entry
 			try {
 				const storageResult = await this.services.unifiedToolManager.executeTool(
-					'cipher_store_reasoning_memory',
+					'matrix_store_reasoning_memory',
 					{
 						trace: reasoningTrace,
 						evaluation: evaluation,
@@ -1045,7 +1045,7 @@ export class ConversationSession {
 				return args.path ? `path: ${args.path}` : 'file write';
 			case 'list_files':
 				return args.path ? `directory: ${args.path}` : 'directory listing';
-			case 'cipher_memory_search':
+			case 'matrix_memory_search':
 				return args.query
 					? `query: "${args.query.substring(0, 50)}${args.query.length > 50 ? '...' : ''}"`
 					: 'memory search';
@@ -1102,7 +1102,7 @@ export class ConversationSession {
 				}
 				return 'file read';
 
-			case 'cipher_memory_search':
+			case 'matrix_memory_search':
 				if (result.results && Array.isArray(result.results)) {
 					return `found ${result.results.length} memory entries`;
 				}

@@ -44,7 +44,7 @@ export interface CommandSuggestion {
 }
 
 /**
- * Comprehensive command parser for Cipher CLI
+ * Comprehensive command parser for Matrix CLI
  */
 export class CommandParser {
 	private commands: Map<string, CommandDefinition> = new Map();
@@ -1502,7 +1502,7 @@ export class CommandParser {
 
 			// Wait for background initialization to complete based on log level
 			// This prevents the CLI prompt from appearing before services are ready
-			const currentLogLevel = process.env.CIPHER_LOG_LEVEL || 'info';
+			const currentLogLevel = process.env.MATRIX_LOG_LEVEL || 'info';
 			const isDebugLevel = ['debug', 'trace'].includes(currentLogLevel);
 
 			if (isDebugLevel) {
@@ -1549,7 +1549,7 @@ export class CommandParser {
 
 			// Wait for background initialization to complete based on log level
 			// This prevents the CLI prompt from appearing before services are ready
-			const currentLogLevel = process.env.CIPHER_LOG_LEVEL || 'info';
+			const currentLogLevel = process.env.MATRIX_LOG_LEVEL || 'info';
 			const isDebugLevel = ['debug', 'trace'].includes(currentLogLevel);
 
 			if (isDebugLevel) {

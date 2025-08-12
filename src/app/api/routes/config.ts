@@ -31,7 +31,7 @@ export function createConfigRoutes(agent: MemAgent): Router {
 
 			// Set appropriate headers for YAML response
 			res.setHeader('Content-Type', 'application/x-yaml; charset=utf-8');
-			res.setHeader('Content-Disposition', 'attachment; filename="cipher-config.yml"');
+			res.setHeader('Content-Disposition', 'attachment; filename="matrix-config.yml"');
 			res.setHeader('X-Request-ID', req.requestId);
 
 			res.send(yamlConfig);

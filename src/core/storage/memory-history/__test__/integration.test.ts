@@ -25,21 +25,21 @@ vi.mock('../../../logger/index.js', () => ({
 // Mock environment configurations for different backends
 const mockConfigs = {
 	inMemory: {
-		CIPHER_LOG_LEVEL: 'info',
+		MATRIX_LOG_LEVEL: 'info',
 		STORAGE_CACHE_TYPE: 'in-memory',
 		STORAGE_DATABASE_TYPE: 'in-memory',
 	},
 	sqlite: {
-		CIPHER_LOG_LEVEL: 'info',
+		MATRIX_LOG_LEVEL: 'info',
 		STORAGE_CACHE_TYPE: 'in-memory',
 		STORAGE_DATABASE_TYPE: 'sqlite',
 		STORAGE_SQLITE_PATH: ':memory:',
 	},
 	postgres: {
-		CIPHER_LOG_LEVEL: 'info',
+		MATRIX_LOG_LEVEL: 'info',
 		STORAGE_CACHE_TYPE: 'in-memory',
 		STORAGE_DATABASE_TYPE: 'postgresql',
-		STORAGE_POSTGRESQL_URL: 'postgresql://test:test@localhost:5432/cipher_test',
+		STORAGE_POSTGRESQL_URL: 'postgresql://test:test@localhost:5432/matrix_test',
 	},
 };
 

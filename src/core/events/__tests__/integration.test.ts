@@ -111,16 +111,16 @@ describe('Event System Integration Tests', () => {
 			const receivedEvents: any[] = [];
 
 			const serviceEventBus = eventManager.getServiceEventBus();
-			serviceEventBus.on(ServiceEvents.CIPHER_STARTED, data => {
-				receivedEvents.push({ type: 'cipher:started', data });
+			serviceEventBus.on(ServiceEvents.MATRIX_STARTED, data => {
+				receivedEvents.push({ type: 'matrix:started', data });
 			});
 
 			serviceEventBus.on(ServiceEvents.SERVICE_STARTED, data => {
-				receivedEvents.push({ type: 'cipher:serviceStarted', data });
+				receivedEvents.push({ type: 'matrix:serviceStarted', data });
 			});
 
 			// Emit events
-			eventManager.emitServiceEvent(ServiceEvents.CIPHER_STARTED, {
+			eventManager.emitServiceEvent(ServiceEvents.MATRIX_STARTED, {
 				timestamp: Date.now(),
 				version: '1.0.0',
 			});
@@ -134,8 +134,8 @@ describe('Event System Integration Tests', () => {
 			await new Promise(resolve => setTimeout(resolve, 10));
 
 			expect(receivedEvents).toHaveLength(2);
-			expect(receivedEvents[0].type).toBe('cipher:started');
-			expect(receivedEvents[1].type).toBe('cipher:serviceStarted');
+			expect(receivedEvents[0].type).toBe('matrix:started');
+			expect(receivedEvents[1].type).toBe('matrix:serviceStarted');
 		});
 
 		test('should emit and handle session events correctly', async () => {
@@ -309,10 +309,10 @@ describe('Event System Integration Tests', () => {
 			const serviceEventBus = eventManager.getServiceEventBus();
 			const sessionEventBus = eventManager.getSessionEventBus(sessionId);
 
-			serviceEventBus.on(ServiceEvents.CIPHER_STARTED, data => {
+			serviceEventBus.on(ServiceEvents.MATRIX_STARTED, data => {
 				metricsCollector.processServiceEvent({
 					id: 'metrics-test-1',
-					type: ServiceEvents.CIPHER_STARTED,
+					type: ServiceEvents.MATRIX_STARTED,
 					data,
 					metadata: { timestamp: Date.now(), source: 'service' },
 				});
@@ -328,7 +328,7 @@ describe('Event System Integration Tests', () => {
 			});
 
 			// Emit events
-			eventManager.emitServiceEvent(ServiceEvents.CIPHER_STARTED, {
+			eventManager.emitServiceEvent(ServiceEvents.MATRIX_STARTED, {
 				timestamp: Date.now(),
 				version: '1.0.0',
 			});
@@ -424,22 +424,22 @@ describe('Event System Integration Tests', () => {
 				url: mockWebhookUrl,
 				method: 'POST',
 				enabled: true,
-				filters: [CommonFilters.byEventType(ServiceEvents.CIPHER_STARTED)],
+				filters: [CommonFilters.byEventType(ServiceEvents.MATRIX_STARTED)],
 			});
 
 			// Setup webhook forwarding
 			const serviceEventBus = eventManager.getServiceEventBus();
-			serviceEventBus.on(ServiceEvents.CIPHER_STARTED, async data => {
+			serviceEventBus.on(ServiceEvents.MATRIX_STARTED, async data => {
 				await webhookForwarder.forwardEvent({
 					id: 'webhook-test-1',
-					type: ServiceEvents.CIPHER_STARTED,
+					type: ServiceEvents.MATRIX_STARTED,
 					data,
 					metadata: { timestamp: Date.now(), source: 'service' },
 				});
 			});
 
 			// Emit event
-			eventManager.emitServiceEvent(ServiceEvents.CIPHER_STARTED, {
+			eventManager.emitServiceEvent(ServiceEvents.MATRIX_STARTED, {
 				timestamp: Date.now(),
 				version: '1.0.0',
 			});
@@ -449,7 +449,7 @@ describe('Event System Integration Tests', () => {
 
 			expect(deliveredEvents.length).toBeGreaterThanOrEqual(0);
 			if (deliveredEvents.length > 0) {
-				expect(deliveredEvents[0].type).toBe(ServiceEvents.CIPHER_STARTED);
+				expect(deliveredEvents[0].type).toBe(ServiceEvents.MATRIX_STARTED);
 			}
 		});
 	});
@@ -463,7 +463,7 @@ describe('Event System Integration Tests', () => {
 			const events = [
 				{
 					id: 'replay-1',
-					type: ServiceEvents.CIPHER_STARTED,
+					type: ServiceEvents.MATRIX_STARTED,
 					data: { timestamp: Date.now(), version: '1.0.0' },
 					metadata: { timestamp: Date.now() - 5000, source: 'service' },
 				},
@@ -492,8 +492,8 @@ describe('Event System Integration Tests', () => {
 			}
 
 			// Setup replay listeners
-			eventReplay.onServiceEvent(ServiceEvents.CIPHER_STARTED, data => {
-				replayedEvents.push({ type: 'cipher:started', data });
+			eventReplay.onServiceEvent(ServiceEvents.MATRIX_STARTED, data => {
+				replayedEvents.push({ type: 'matrix:started', data });
 			});
 
 			eventReplay.onSessionEvent(SessionEvents.SESSION_CREATED, data => {
@@ -519,7 +519,7 @@ describe('Event System Integration Tests', () => {
 			await new Promise(resolve => setTimeout(resolve, 100));
 
 			expect(replayedEvents.length).toBe(3);
-			expect(replayedEvents[0].type).toBe('cipher:started');
+			expect(replayedEvents[0].type).toBe('matrix:started');
 			expect(replayedEvents[1].type).toBe('session:created');
 			expect(replayedEvents[2].type).toBe('tool:executionStarted');
 		});
@@ -563,9 +563,9 @@ describe('Event System Integration Tests', () => {
 			// Setup filtering
 			eventManager.setupCommonFilters();
 
-			// Simulate a complete cipher workflow
-			// 1. Cipher starts
-			eventManager.emitServiceEvent(ServiceEvents.CIPHER_STARTED, {
+			// Simulate a complete matrix workflow
+			// 1. Matrix starts
+			eventManager.emitServiceEvent(ServiceEvents.MATRIX_STARTED, {
 				timestamp: Date.now(),
 				version: '1.0.0',
 			});

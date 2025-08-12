@@ -93,7 +93,7 @@ export class IDRangeManager {
 		this.rangeSize = rangeSize;
 		this.nextAvailableStart = 1000000; // Start custom ranges at 1M
 		this.logger = createLogger({
-			level: env.CIPHER_LOG_LEVEL || 'info',
+			level: env.MATRIX_LOG_LEVEL || 'info',
 		});
 
 		// Pre-allocate legacy ranges
@@ -197,7 +197,7 @@ export class CustomCollectionManager {
 
 	constructor(rangeSize?: number) {
 		this.logger = createLogger({
-			level: env.CIPHER_LOG_LEVEL || 'info',
+			level: env.MATRIX_LOG_LEVEL || 'info',
 		});
 		this.idRangeManager = new IDRangeManager(rangeSize);
 

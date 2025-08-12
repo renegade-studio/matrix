@@ -4,11 +4,11 @@ import { EmbeddingConfigSchema } from '../embedding/config.js';
 import { z } from 'zod';
 export const AgentCardSchema = z
 	.object({
-		name: z.string().default('cipher'),
+		name: z.string().default('matrix'),
 		description: z
 			.string()
 			.default(
-				'cipher is an AI assistant capable of store valuable software development knowledge for your  vibe coding agents'
+				'matrix is an AI assistant capable of store valuable software development knowledge for your  vibe coding agents'
 			),
 		provider: z
 			.object({

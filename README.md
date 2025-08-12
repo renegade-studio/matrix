@@ -1,8 +1,8 @@
-# Cipher
+# Matrix
 
 <div align="center">
 
-<img src="./assets/cipher-logo.png" alt="Cipher Agent Logo" width="400" />
+<img src="./assets/matrix-logo.png" alt="Matrix Agent Logo" width="400" />
 
 <p align="center">
 <em>Memory-powered AI agent framework with MCP integration</em>
@@ -11,7 +11,7 @@
 <p align="center">
 <a href="LICENSE"><img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License" /></a>
 <img src="https://img.shields.io/badge/Status-Beta-orange.svg" alt="Beta" />
-<a href="https://docs.byterover.dev/cipher/overview"><img src="https://img.shields.io/badge/Docs-Documentation-green.svg" alt="Documentation" /></a>
+<a href="https://docs.byterover.dev/matrix/overview"><img src="https://img.shields.io/badge/Docs-Documentation-green.svg" alt="Documentation" /></a>
 <a href="https://discord.com/invite/UMRrpNjh5W"><img src="https://img.shields.io/badge/Discord-Join%20Community-7289da" alt="Discord" /></a>
 </p>
 
@@ -19,7 +19,7 @@
 
 ## Overview
 
-Cipher is an opensource memory layer specifically designed for coding agents. Compatible with **Cursor, Windsurf, Claude Desktop, Claude Code, Gemini CLI, AWS's Kiro, VS Code, and Roo Code** through MCP, and coding agents, such as **Kimi K2**. (see more on [examples](./examples))
+Matrix is an opensource memory layer specifically designed for coding agents. Compatible with **Cursor, Windsurf, Claude Desktop, Claude Code, Gemini CLI, AWS's Kiro, VS Code, and Roo Code** through MCP, and coding agents, such as **Kimi K2**. (see more on [examples](./examples))
 
 Built by [Byterover team](https://byterover.dev/)
 
@@ -38,18 +38,18 @@ Built by [Byterover team](https://byterover.dev/)
 
 ```bash
 # Install globally
-npm install -g @byterover/cipher
+npm install -g @byterover/matrix
 
 # Or install locally in your project
-npm install @byterover/cipher
+npm install @byterover/matrix
 ```
 
 ### Docker
 
 ```bash
 # Clone and setup
-git clone https://github.com/campfirein/cipher.git
-cd cipher
+git clone https://github.com/campfirein/matrix.git
+cd matrix
 
 # Configure environment
 cp .env.example .env
@@ -72,21 +72,21 @@ pnpm i && pnpm run build && npm link
 
 ```bash
 # Interactive mode
-cipher
+matrix
 
 # One-shot command
-cipher "Add this to memory as common causes of 'CORS error' in local dev with Vite + Express."
+matrix "Add this to memory as common causes of 'CORS error' in local dev with Vite + Express."
 
 # API server mode
-cipher --mode api
+matrix --mode api
 
 # MCP server mode
-cipher --mode mcp
+matrix --mode mcp
 ```
 
 ## Configuration
 
-### Agent Configuration (memAgent/cipher.yml)
+### Agent Configuration (memAgent/matrix.yml)
 
 ```yaml
 # LLM Configuration
@@ -108,7 +108,7 @@ mcpServers:
 
 ## Embedding Configuration
 
-Configure embeddings in `memAgent/cipher.yml`. If not specified, uses automatic fallback based on your LLM provider. Below is the table of fallback embedding models:
+Configure embeddings in `memAgent/matrix.yml`. If not specified, uses automatic fallback based on your LLM provider. Below is the table of fallback embedding models:
 
 ### Supported Providers
 
@@ -173,7 +173,7 @@ embedding:
   disabled: true
 ```
 
-**Note:** Setting `embedding: disabled: true` disables all memory-related tools (`cipher_memory_search`, `cipher_extract_and_operate_memory`, etc.) and operates in chat-only mode.
+**Note:** Setting `embedding: disabled: true` disables all memory-related tools (`matrix_memory_search`, `matrix_extract_and_operate_memory`, etc.) and operates in chat-only mode.
 
 ### Automatic Fallback
 
@@ -191,7 +191,7 @@ If no embedding config is specified, automatically uses your LLM provider's embe
 
 ## Vector Store Configuration
 
-Cipher supports three vector databases for storing embeddings. Configure in `.env`:
+Matrix supports three vector databases for storing embeddings. Configure in `.env`:
 
 ### Supported Vector Stores
 
@@ -240,7 +240,7 @@ DISABLE_REFLECTION_MEMORY=true
 
 ## LLM Providers
 
-Cipher supports multiple LLM providers:
+Matrix supports multiple LLM providers:
 
 ### OpenAI
 
@@ -289,7 +289,7 @@ llm:
   # baseURL: http://localhost:1234/v1
 
 # OPTIONAL: Configure specific embedding model
-# If not specified, Cipher will automatically try:
+# If not specified, Matrix will automatically try:
 # 1. Same model as LLM (if it supports embeddings)
 # 2. Default embedding model (nomic-embed-text-v1.5)
 # 3. OpenAI fallback (if OPENAI_API_KEY available)
@@ -299,7 +299,7 @@ embedding:
   # baseURL: http://localhost:1234/v1
 ```
 
-> **Note:** LM Studio is fully OpenAI-compatible and now supports both LLM and embedding models! By default, Cipher will connect to LM Studio at `http://localhost:1234/v1`. No API key is required.
+> **Note:** LM Studio is fully OpenAI-compatible and now supports both LLM and embedding models! By default, Matrix will connect to LM Studio at `http://localhost:1234/v1`. No API key is required.
 >
 > **🆕 Embedding Support**: LM Studio now supports embedding models like `nomic-embed-text-v1.5`, `bge-large`, `bge-base`, and other BERT-based models in GGUF format.
 >
@@ -364,17 +364,17 @@ llm:
 
 ```bash
 # Basic usage
-cipher                              # Interactive CLI mode
-cipher "Your prompt here"           # One-shot mode
+matrix                              # Interactive CLI mode
+matrix "Your prompt here"           # One-shot mode
 
 # Server modes
-cipher --mode api                   # REST API server
-cipher --mode mcp                   # MCP server (make sure all necessary environment variables are set in the shell environment)
+matrix --mode api                   # REST API server
+matrix --mode mcp                   # MCP server (make sure all necessary environment variables are set in the shell environment)
 
 # Configuration
-cipher --agent /path/to/config.yml  # Custom config
-cipher --strict                     # Strict MCP connections
-cipher --new-session [id]           # Start with new session
+matrix --agent /path/to/config.yml  # Custom config
+matrix --strict                     # Strict MCP connections
+matrix --new-session [id]           # Start with new session
 
 # CLI commands
 /session list                       # List sessions
@@ -387,7 +387,7 @@ cipher --new-session [id]           # Start with new session
 
 ## Chat History
 
-Cipher supports persistent chat history using PostgreSQL as the primary storage backend. This allows conversations to be restored across application restarts.
+Matrix supports persistent chat history using PostgreSQL as the primary storage backend. This allows conversations to be restored across application restarts.
 
 ### PostgreSQL Configuration
 
@@ -396,7 +396,7 @@ To use PostgreSQL for chat history persistence, set the following environment va
 #### Option 1: Using Connection URL (Recommended)
 
 ```bash
-export CIPHER_PG_URL="postgresql://username:password@localhost:5432/cipher_db"
+export MATRIX_PG_URL="postgresql://username:password@localhost:5432/matrix_db"
 ```
 
 #### Option 2: Using Individual Parameters
@@ -404,7 +404,7 @@ export CIPHER_PG_URL="postgresql://username:password@localhost:5432/cipher_db"
 ```bash
 export STORAGE_DATABASE_HOST="localhost"
 export STORAGE_DATABASE_PORT="5432"
-export STORAGE_DATABASE_NAME="cipher_db"
+export STORAGE_DATABASE_NAME="matrix_db"
 export STORAGE_DATABASE_USER="username"
 export STORAGE_DATABASE_PASSWORD="password"
 export STORAGE_DATABASE_SSL="false"
@@ -415,14 +415,14 @@ export STORAGE_DATABASE_SSL="false"
 1. Create a PostgreSQL database:
 
 ```sql
-CREATE DATABASE cipher_db;
+CREATE DATABASE matrix_db;
 ```
 
 2. The application will automatically create the necessary tables and indexes on first run.
 
 ### Fallback Behavior
 
-If PostgreSQL is not available or fails to connect, Cipher will automatically fall back to:
+If PostgreSQL is not available or fails to connect, Matrix will automatically fall back to:
 
 1. SQLite (local file-based storage)
 2. In-memory storage (no persistence)
@@ -431,14 +431,14 @@ If PostgreSQL is not available or fails to connect, Cipher will automatically fa
 
 Sessions are stored with the following key pattern:
 
-- Session data: `cipher:sessions:{sessionId}`
+- Session data: `matrix:sessions:{sessionId}`
 - Message history: `messages:{sessionId}`
 
 ### Environment Variables
 
 | Variable                    | Description               | Default |
 | --------------------------- | ------------------------- | ------- |
-| `CIPHER_PG_URL`             | PostgreSQL connection URL | None    |
+| `MATRIX_PG_URL`             | PostgreSQL connection URL | None    |
 | `STORAGE_DATABASE_HOST`     | PostgreSQL host           | None    |
 | `STORAGE_DATABASE_PORT`     | PostgreSQL port           | 5432    |
 | `STORAGE_DATABASE_NAME`     | Database name             | None    |
@@ -448,18 +448,18 @@ Sessions are stored with the following key pattern:
 
 ## MCP Server Usage
 
-Cipher can run as an MCP (Model Context Protocol) server, allowing integration with MCP-compatible clients like Claude Desktop, Cursor, Windsurf, and other AI coding assistants.
+Matrix can run as an MCP (Model Context Protocol) server, allowing integration with MCP-compatible clients like Claude Desktop, Cursor, Windsurf, and other AI coding assistants.
 
 ### Quick Setup
 
-To use Cipher as an MCP server in your MCP client configuration:
+To use Matrix as an MCP server in your MCP client configuration:
 
 ```json
 {
 	"mcpServers": {
-		"cipher": {
+		"matrix": {
 			"type": "stdio",
-			"command": "cipher",
+			"command": "matrix",
 			"args": ["--mode", "mcp"],
 			"env": {
 				"OPENAI_API_KEY": "your_openai_api_key",
@@ -479,9 +479,9 @@ Add to your Claude Desktop MCP configuration file:
 ```json
 {
 	"mcpServers": {
-		"cipher": {
+		"matrix": {
 			"type": "stdio",
-			"command": "cipher",
+			"command": "matrix",
 			"args": ["--mode", "mcp"],
 			"env": {
 				"OPENAI_API_KEY": "sk-your-openai-key",
@@ -494,17 +494,17 @@ Add to your Claude Desktop MCP configuration file:
 
 ### MCP Aggregator Mode
 
-Cipher now supports a new **MCP Aggregator Mode** that exposes all available tools (not just `ask_cipher`) to MCP clients, including all built-in tools for cipher, such as `cipher_search_memory` and MCP server tools specified in `cipher.yml`. This is controlled by the `MCP_SERVER_MODE` environment variable.
+Matrix now supports a new **MCP Aggregator Mode** that exposes all available tools (not just `ask_matrix`) to MCP clients, including all built-in tools for matrix, such as `matrix_search_memory` and MCP server tools specified in `matrix.yml`. This is controlled by the `MCP_SERVER_MODE` environment variable.
 
 #### Modes
 
-- **default**: Only the `ask_cipher` tool is available.
+- **default**: Only the `ask_matrix` tool is available.
 - **aggregator**: All tools (including those from connected MCP servers) are available, with conflict resolution and timeout options.
 
 #### Environment Variables
 
 ```bash
-# Select MCP server mode: 'default' (only ask_cipher) or 'aggregator' (all tools)
+# Select MCP server mode: 'default' (only ask_matrix) or 'aggregator' (all tools)
 MCP_SERVER_MODE=aggregator
 
 # (Optional) Tool name conflict resolution: 'prefix' (default), 'first-wins', or 'error'
@@ -519,9 +519,9 @@ AGGREGATOR_TIMEOUT=60000
 ```json
 {
 	"mcpServers": {
-		"cipher-aggregator": {
+		"matrix-aggregator": {
 			"type": "stdio",
-			"command": "cipher",
+			"command": "matrix",
 			"args": ["--mode", "mcp"],
 			"env": {
 				"OPENAI_API_KEY": "sk-your-openai-key",
@@ -535,7 +535,7 @@ AGGREGATOR_TIMEOUT=60000
 ```
 
 - In **aggregator** mode, all tools are exposed. Tool name conflicts are resolved according to `AGGREGATOR_CONFLICT_RESOLUTION`.
-- If you want only the `ask_cipher` tool, set `MCP_SERVER_MODE=default` or omit the variable.
+- If you want only the `ask_matrix` tool, set `MCP_SERVER_MODE=default` or omit the variable.
 
 Check out the [MCP Aggregator Hub example](./examples/04-mcp-aggregator-hub/) that further demonstrates the usecase of this MCP server mode.
 
@@ -543,14 +543,14 @@ Check out the [MCP Aggregator Hub example](./examples/04-mcp-aggregator-hub/) th
 
 ### SSE Transport Support
 
-Cipher now supports **SSE (Server-Sent Events)** as a transport for MCP server mode, in addition to `stdio` and `http`.
+Matrix now supports **SSE (Server-Sent Events)** as a transport for MCP server mode, in addition to `stdio` and `http`.
 
 #### CLI Usage
 
-To start Cipher in MCP mode with SSE transport:
+To start Matrix in MCP mode with SSE transport:
 
 ```bash
-cipher --mode mcp --mcp-transport-type sse --mcp-port 4000
+matrix --mode mcp --mcp-transport-type sse --mcp-port 4000
 ```
 
 - `--mcp-transport-type sse` enables SSE transport.
@@ -561,7 +561,7 @@ cipher --mode mcp --mcp-transport-type sse --mcp-port 4000
 ```json
 {
 	"mcpServers": {
-		"cipher-sse": {
+		"matrix-sse": {
 			"type": "sse",
 			"url": "http://localhost:4000/mcp",
 			"env": {
@@ -572,22 +572,22 @@ cipher --mode mcp --mcp-transport-type sse --mcp-port 4000
 }
 ```
 
-- Set `"type": "sse"` and provide the `"url"` to the running Cipher SSE server.
+- Set `"type": "sse"` and provide the `"url"` to the running Matrix SSE server.
 
 ---
 
-## Tutorial Video: Claude Code with Cipher MCP
+## Tutorial Video: Claude Code with Matrix MCP
 
-Watch our comprehensive tutorial on how to integrate Cipher with Claude Code through MCP for enhanced coding assistance with persistent memory:
+Watch our comprehensive tutorial on how to integrate Matrix with Claude Code through MCP for enhanced coding assistance with persistent memory:
 
-[![Cipher + Claude Code Tutorial](https://img.youtube.com/vi/AZh9Py6g07Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=AZh9Py6g07Y)
+[![Matrix + Claude Code Tutorial](https://img.youtube.com/vi/AZh9Py6g07Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=AZh9Py6g07Y)
 
 > **Click the image above to watch the tutorial on YouTube.**
 
 This tutorial covers:
 
-- Setting up Cipher as an MCP server
-- Configuring Claude Code to use Cipher
+- Setting up Matrix as an MCP server
+- Configuring Claude Code to use Matrix
 - Demonstrating memory storage and retrieval
 - Real-world coding scenarios with persistent context
 
@@ -597,9 +597,9 @@ For detailed configuration instructions, see the [CLI Coding Agents guide](./exa
 
 For detailed documentation, visit:
 
-- [Quick Start Guide](https://docs.byterover.dev/cipher/quickstart)
-- [Configuration Guide](https://docs.byterover.dev/cipher/configuration)
-- [Complete Documentation](https://docs.byterover.dev/cipher/overview)
+- [Quick Start Guide](https://docs.byterover.dev/matrix/quickstart)
+- [Configuration Guide](https://docs.byterover.dev/matrix/configuration)
+- [Complete Documentation](https://docs.byterover.dev/matrix/overview)
 
 ## Contributing
 
@@ -607,26 +607,26 @@ We welcome contributions! Refer to our [Contributing Guide](./CONTRIBUTING.md) f
 
 ## Community & Support
 
-**cipher** is the opensource version of the agentic memory of [byterover](https://byterover.dev/) which is built and maintained by the byterover team.
+**matrix** is the opensource version of the agentic memory of [byterover](https://byterover.dev/) which is built and maintained by the byterover team.
 
 - Join our [Discord](https://discord.com/invite/UMRrpNjh5W) to share projects, ask questions, or just say hi!
-- If you enjoy cipher, please give us a ⭐ on GitHub—it helps a lot!
+- If you enjoy matrix, please give us a ⭐ on GitHub—it helps a lot!
 - Follow [@kevinnguyendn](https://x.com/kevinnguyendn) on X
 
 ## Contributors
 
-Thanks to all these amazing people for contributing to cipher!
+Thanks to all these amazing people for contributing to matrix!
 
-[Contributors](https://github.com/campfirein/cipher/graphs/contributors)
+[Contributors](https://github.com/campfirein/matrix/graphs/contributors)
 
 ## MseeP.ai Security Assessment Badge
 
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/campfirein-cipher-badge.png)](https://mseep.ai/app/campfirein-cipher)
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/campfirein-matrix-badge.png)](https://mseep.ai/app/campfirein-matrix)
 
 ## Star History
 
-<a href="https://star-history.com/#campfirein/cipher&Date">
-  <img width="500" alt="Star History Chart" src="https://api.star-history.com/svg?repos=campfirein/cipher&type=Date&v=2">
+<a href="https://star-history.com/#campfirein/matrix&Date">
+  <img width="500" alt="Star History Chart" src="https://api.star-history.com/svg?repos=campfirein/matrix&type=Date&v=2">
 </a>
 
 ## License

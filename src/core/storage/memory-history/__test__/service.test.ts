@@ -23,7 +23,7 @@ vi.mock('../../../logger/index.js', () => ({
 // Mock the env module
 vi.mock('../../../env.js', () => ({
 	env: {
-		CIPHER_LOG_LEVEL: 'info',
+		MATRIX_LOG_LEVEL: 'info',
 		STORAGE_CACHE_TYPE: 'in-memory',
 		STORAGE_DATABASE_TYPE: 'in-memory',
 	},

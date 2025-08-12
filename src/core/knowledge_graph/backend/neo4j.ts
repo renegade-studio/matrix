@@ -2,7 +2,7 @@
  * Neo4j Knowledge Graph Backend
  *
  * Production-grade graph database implementation using Neo4j.
- * Provides full Cipher query support and advanced graph operations.
+ * Provides full Matrix query support and advanced graph operations.
  *
  * @module knowledge_graph/backend/neo4j
  */
